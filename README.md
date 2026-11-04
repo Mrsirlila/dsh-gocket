@@ -49,7 +49,7 @@
 dsh plugin --profile web add "dsh-pocket@github:Mrsirlila/dsh-pocket-plus#path:/plugin"
 ```
 
-也可以用 [Releases](../../releases) 里的 `dsh-pocket插件-已打补丁.zip` 离线部署。装完重启 DSH，侧栏打开「DSH Pocket」设置页，能看到局域网 / Tailscale / 公网三张二维码。
+也可以用 [Releases](../../releases) 里的 `dsh-pocket-plus-plugin.zip` 离线部署。装完重启 DSH，侧栏打开「DSH Pocket」设置页，能看到局域网 / Tailscale / 公网三张二维码。
 
 插件的详细说明、补丁清单和常见问题见 [dsh-pocket-plus](https://github.com/Mrsirlila/dsh-pocket-plus)。
 
