@@ -6,7 +6,7 @@
 
 <p>
   <img src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
-  <img src="https://img.shields.io/badge/based%20on-dsh--Go%201.0.10-4f8cff?style=flat-square" alt="based on dsh-Go 1.0.10" />
+  <img src="https://img.shields.io/badge/based%20on-dsh--Go%201.0.11-4f8cff?style=flat-square" alt="based on dsh-Go 1.0.10" />
   <img src="https://img.shields.io/badge/plugin-dsh--pocket--plus-8b5cf6?style=flat-square" alt="dsh-pocket-plus" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="AGPL-3.0" /></a>
 </p>

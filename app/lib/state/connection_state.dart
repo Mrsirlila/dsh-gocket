@@ -285,7 +285,7 @@ class RemoteConnectionController extends AsyncNotifier<HostConnection?> {
   Future<HostConnection?> build() async {
     final link = ref.watch(hostLinkProvider(host));
     if (link == null) return null;
-    final name = ref.watch(hostNameProvider(host));
+    var name = ref.read(hostNameProvider(host));
 
     HostConnection wrap(DshClient client) => HostConnection(
       client: client,
@@ -295,6 +295,14 @@ class RemoteConnectionController extends AsyncNotifier<HostConnection?> {
       hostId: host.id,
       workingDirectory: link is SshHostLink ? link.resolvedWorkingDirectory : null,
     );
+
+    ref.listen(hostNameProvider(host), (_, next) {
+      name = next;
+      // A label change keeps the current client; it must not revive a previous one.
+      if (!state.isLoading && !state.hasError) {
+        if (state.value case final connection?) state = AsyncData(wrap(connection.client));
+      }
+    });
 
     if (link is SshHostLink) {
       ref.listen(hostsProvider.select((s) => s.sshById(host.id)), (previous, next) {
@@ -347,8 +355,19 @@ final remoteConnectionProvider = AsyncNotifierProvider.autoDispose
 class ConnectionDiagnostics {
   static const _unobserved = <String, Object?>{'host': 'not_observed', 'state': 'not_observed'};
   Map<String, Object?> _value = _unobserved;
+  final _changes = StreamController<void>.broadcast();
 
   Map<String, Object?> get snapshot => Map.unmodifiable(_value);
+
+  /// Passive notifications from connections already observed by their normal
+  /// callers. Subscribing never creates or retries a connection.
+  Stream<void> get changes => _changes.stream;
+
+  void _changed() {
+    if (!_changes.isClosed) _changes.add(null);
+  }
+
+  void dispose() => unawaited(_changes.close());
 
   void _observe(Ref ref, HostRef host, AsyncValue<HostConnection?> connection) {
     final error = connection.error;
@@ -363,8 +382,12 @@ class ConnectionDiagnostics {
       if (error is HostLinkError) ...{'errorKind': error.kind.name, 'retryable': error.retryable},
     };
     _value = value;
+    _changed();
     void clear() {
-      if (identical(_value, value)) _value = _unobserved;
+      if (identical(_value, value)) {
+        _value = _unobserved;
+        _changed();
+      }
     }
 
     ref.onDispose(clear);
@@ -388,6 +411,7 @@ class ConnectionDiagnostics {
         },
         if (status.error case final error?) ...{'errorKind': error.kind.name, 'retryable': error.retryable},
       });
+      _changed();
     }
 
     record(link.status);
@@ -396,7 +420,11 @@ class ConnectionDiagnostics {
   }
 }
 
-final connectionDiagnosticsProvider = Provider((ref) => ConnectionDiagnostics());
+final connectionDiagnosticsProvider = Provider((ref) {
+  final diagnostics = ConnectionDiagnostics();
+  ref.onDispose(diagnostics.dispose);
+  return diagnostics;
+});
 
 /// The host the chat UI talks to: the one picked in the host switcher.
 ///
@@ -406,6 +434,7 @@ final activeConnectionProvider = Provider<AsyncValue<HostConnection?>>((ref) {
   final host = ref.watch(activeHostProvider);
   final connection = _connectionForHost(ref, host);
   ref.read(connectionDiagnosticsProvider)._observe(ref, host, connection);
+  // Rebuilds can retain the previous value after its client has been disposed.
   return connection;
 });
 
