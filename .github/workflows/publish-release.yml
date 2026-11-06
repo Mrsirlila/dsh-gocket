@@ -1,0 +1,36 @@
+# Attaches the APK from a finished Build APK run to an existing release
+# (Actions → Publish release APK → Run workflow). Uploads happen on GitHub's
+# side, so a slow home connection doesn't matter.
+name: Publish release APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Build APK run id
+        type: string
+        required: true
+      tag:
+        description: Release tag to attach to (must already exist)
+        type: string
+        required: true
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download the APK artifact and attach it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -D out
+          apk=$(find out -name '*.apk' | head -1)
+          [[ -n $apk ]] || { echo "no APK in run $RUN_ID"; exit 1; }
+          sha256sum "$apk"
+          gh release upload "$TAG" "$apk" -R "$GITHUB_REPOSITORY" --clobber
