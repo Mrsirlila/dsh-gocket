@@ -30,7 +30,7 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: |
           gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -D out
-          apk=$(find out -name '*.apk' | head -1)
+          apk=$(find out -type f -name '*.apk' | head -1)
           [[ -n $apk ]] || { echo "no APK in run $RUN_ID"; exit 1; }
           sha256sum "$apk"
           gh release upload "$TAG" "$apk" -R "$GITHUB_REPOSITORY" --clobber
