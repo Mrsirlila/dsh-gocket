@@ -86,7 +86,7 @@ class CommunityPrompt {
 
 /// Where people talk: a QQ / WeChat / Telegram group, a forum.
 class CommunityGroup {
-  const CommunityGroup({required this.kind, required this.title, this.subtitle, this.url, this.qr, this.copy});
+  const CommunityGroup({required this.kind, required this.title, this.subtitle, this.url, this.qr, this.copy, this.image});
 
   /// `qq`, `wechat`, `telegram`, `discord`, `forum`, `github`, or anything
   /// else (a link).
@@ -102,6 +102,9 @@ class CommunityGroup {
 
   /// Copied by 「复制」: a group number, an account id.
   final String? copy;
+
+  /// A bundled QR card image (assets/...) shown instead of a generated code.
+  final String? image;
 
   String? get qrData => qr ?? url;
 }
@@ -183,9 +186,11 @@ class CommunityFeed {
         final url = _https(m['url']);
         final qr = _text(m['qr'], 500);
         final copy = _text(m['copy'], 64);
+        final image = _text(m['image'], 200);
         // A QR code that looks like a link must be an https one too.
         final qrOk = qr == null || !qr.contains('://') || _https(qr) != null;
-        if (title == null || !qrOk || (url == null && qr == null && copy == null)) return null;
+        final imageOk = image == null || (image.startsWith('assets/') && !image.contains('..'));
+        if (title == null || !qrOk || !imageOk || (url == null && qr == null && copy == null && image == null)) return null;
         return CommunityGroup(
           kind: _text(m['kind'], 16)?.toLowerCase() ?? 'link',
           title: title,
@@ -193,6 +198,7 @@ class CommunityFeed {
           url: url,
           qr: qr,
           copy: copy,
+          image: image,
         );
       }),
       updates: list('updates', (m) {

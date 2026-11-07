@@ -87,6 +87,28 @@ class AboutPage extends ConsumerWidget {
             ),
           ],
         ),
+        SettingsSection(
+          title: l10n.hubAboutContributor,
+          children: [
+            const SettingsTile(title: AppInfo.author2),
+            _authorLink(
+              context,
+              ref,
+              'about-author2-bilibili',
+              l10n.hubAboutBilibili,
+              AppInfo.author2,
+              AppInfo.author2BilibiliUrl,
+            ),
+            _authorLink(
+              context,
+              ref,
+              'about-author2-github',
+              l10n.hubAboutGithub,
+              '@Mrsirlila',
+              AppInfo.author2GithubUrl,
+            ),
+          ],
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
           child: Column(

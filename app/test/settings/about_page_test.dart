@@ -33,6 +33,8 @@ const _profiles = [
   ('about-author-bilibili', 'https://b23.tv/9WBns6Y'),
   ('about-author-x', 'https://x.com/cccch1mneyyyy'),
   ('about-author-github', 'https://github.com/ccch1mneyyy'),
+  ('about-author2-bilibili', 'https://space.bilibili.com/76839366'),
+  ('about-author2-github', 'https://github.com/Mrsirlila'),
 ];
 
 void main() {
@@ -89,7 +91,7 @@ void main() {
 
   Future<void> tap(WidgetTester tester, String key) async {
     final row = find.byKey(ValueKey(key));
-    await tester.ensureVisible(row);
+    await Scrollable.ensureVisible(row.evaluate().first, alignment: 0.5);
     await tester.pumpAndSettle();
     await tester.tap(row);
     await tester.pumpAndSettle();
@@ -107,9 +109,12 @@ void main() {
         expect(find.text('@ccch1mneyyy'), findsOneWidget);
         expect(find.text('1.0.2 (42)'), findsOneWidget);
         expect(find.byKey(const ValueKey('settings-star')), findsOneWidget);
-        expect(find.text(english ? 'Bilibili profile' : 'B站主页'), findsOneWidget);
+        expect(find.text(english ? 'Bilibili profile' : 'B站主页'), findsNWidgets(2));
         expect(find.text(english ? 'X profile' : 'X 主页'), findsOneWidget);
-        expect(find.text(english ? 'GitHub profile' : 'GitHub 主页'), findsOneWidget);
+        expect(find.text(english ? 'GitHub profile' : 'GitHub 主页'), findsNWidgets(2));
+        expect(find.text(english ? 'Fork developer' : '二次开发者'), findsOneWidget);
+        expect(find.text('Mr.sir'), findsNWidgets(2));
+        expect(find.text('@Mrsirlila'), findsOneWidget);
 
         for (final (key, _) in _profiles) {
           final row = find.byKey(ValueKey(key));
@@ -142,7 +147,7 @@ void main() {
   testWidgets('the separate project star still opens the repository', (tester) async {
     await pump(tester);
     await tap(tester, 'settings-star');
-    expect(opened.map((uri) => uri.toString()), ['https://github.com/ccch1mneyyy/dsh-go']);
+    expect(opened.map((uri) => uri.toString()), ['https://github.com/Mrsirlila/dsh-gocket']);
     expect(store.writes.last.finished, isTrue);
   });
 

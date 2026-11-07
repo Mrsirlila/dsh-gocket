@@ -7368,6 +7368,9 @@ class L10nZh extends L10n {
   String get hubAboutAuthor => 'DSH Go 原作者';
 
   @override
+  String get hubAboutContributor => '二次开发者';
+
+  @override
   String get hubAboutBilibili => 'B站主页';
 
   @override

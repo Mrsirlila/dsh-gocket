@@ -37,6 +37,11 @@ abstract final class AppInfo {
   static const authorXUrl = 'https://x.com/cccch1mneyyyy';
   static const authorGithubUrl = 'https://github.com/ccch1mneyyy';
 
+  /// The dsh-gocket maintainer, credited below the original author.
+  static const author2 = 'Mr.sir';
+  static const author2BilibiliUrl = 'https://space.bilibili.com/76839366';
+  static const author2GithubUrl = 'https://github.com/Mrsirlila';
+
   static const deepseekPlatform = 'https://platform.deepseek.com/api_keys';
   static const remoteConsole = 'https://dsh.r2049.cn/app';
 

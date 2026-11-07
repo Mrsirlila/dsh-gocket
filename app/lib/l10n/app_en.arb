@@ -2234,6 +2234,7 @@
   "hubTableTintNoneHint": "Grid lines only, the lightest",
   "hubAbout": "About DSH Go",
   "hubAboutAuthor": "Original author of DSH Go",
+  "hubAboutContributor": "Fork developer",
   "hubAboutBilibili": "Bilibili profile",
   "hubAboutX": "X profile",
   "hubAboutGithub": "GitHub profile",

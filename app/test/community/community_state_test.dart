@@ -38,7 +38,7 @@ void main() {
       expect(feed.revision, greaterThanOrEqualTo(1));
       expect(feed.plugins, isNotEmpty);
       expect(feed.prompts, hasLength(6));
-      expect(feed.groups.map((g) => g.title), ['问题反馈']);
+      expect(feed.groups.map((g) => g.title), ['问题反馈', 'gocket的作者群']);
     });
 
     test('wrong schema, missing revision or bad JSON are refused', () {

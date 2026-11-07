@@ -122,7 +122,7 @@ class CommunityGroupRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sheet = group.qrData != null || group.copy != null;
+    final sheet = group.qrData != null || group.copy != null || group.image != null;
     return SettingsTile(
       icon: communityGroupIcon(group.kind),
       tint: CommunityHues.groups,
@@ -208,7 +208,7 @@ class _CommunityGroupSheetState extends State<CommunityGroupSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SheetHeader(group.title),
-          if (qr != null) ...[
+          if (qr != null || group.image != null) ...[
             const SizedBox(height: 8),
             Center(
               child: DecoratedBox(
@@ -223,13 +223,19 @@ class _CommunityGroupSheetState extends State<CommunityGroupSheet> {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
-                  child: QrCodeView(
-                    data: qr,
-                    size: CommunityGroupSheet.qrSize,
-                    quietZone: 1,
-                    logo: true,
-                    semanticLabel: l10n.botsQrCodeLabel(group.title),
-                  ),
+                  child: group.image != null
+                      ? Image.asset(
+                          group.image!,
+                          width: CommunityGroupSheet.qrSize,
+                          semanticLabel: l10n.botsQrCodeLabel(group.title),
+                        )
+                      : QrCodeView(
+                          data: qr!,
+                          size: CommunityGroupSheet.qrSize,
+                          quietZone: 1,
+                          logo: true,
+                          semanticLabel: l10n.botsQrCodeLabel(group.title),
+                        ),
                 ),
               ),
             ),

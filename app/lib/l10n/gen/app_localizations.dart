@@ -13496,6 +13496,12 @@ abstract class L10n {
   /// **'DSH Go 原作者'**
   String get hubAboutAuthor;
 
+  /// No description provided for @hubAboutContributor.
+  ///
+  /// In zh, this message translates to:
+  /// **'二次开发者'**
+  String get hubAboutContributor;
+
   /// No description provided for @hubAboutBilibili.
   ///
   /// In zh, this message translates to:

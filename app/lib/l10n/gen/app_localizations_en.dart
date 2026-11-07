@@ -7794,6 +7794,9 @@ class L10nEn extends L10n {
   String get hubAboutAuthor => 'Original author of DSH Go';
 
   @override
+  String get hubAboutContributor => 'Fork developer';
+
+  @override
   String get hubAboutBilibili => 'Bilibili profile';
 
   @override
