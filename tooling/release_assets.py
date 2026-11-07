@@ -10,12 +10,13 @@ with `tooling/build-apk.sh` first. Explicit multiple inputs must share a build n
 It also makes delta patches (tooling/apk_delta.py, docs/design/delta-update.md)
 from the arm64 APKs of the last --delta-from releases on GitHub (fetched with
 `gh`, kept in ~/.cache/dshgo-release/apk/, checked against their SHA256SUMS),
-and keeps those under 60 % of the new APK: in dist/, SHA256SUMS and update.json's
-`patches`.
+or from local APKs named with --delta-apk, and keeps those under 60 % of the
+new APK: in dist/, SHA256SUMS and update.json's `patches`.
 
     python3 tooling/release_assets.py --notes notes.md
     python3 tooling/release_assets.py --notes notes.md --base-url https://cdn.example.com/dsh/1.2.0/
     python3 tooling/release_assets.py --delta-from 0        no patches, no network
+    python3 tooling/release_assets.py --delta-from 0 --delta-apk ../previous.apk
 
 --base-url makes update.json point at your own host (self-hosted feed); without
 it the app derives GitHub download URLs from the tag and asset names.
@@ -39,7 +40,7 @@ from build_number import MAX_VERSION_CODE, decode
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 FLAVORS = ("arm64", "x64")
 FLAVOR_ABI = {"arm64": "arm64-v8a", "x64": "x86_64"}
-REPO = "ccch1mneyyy/dsh-go"
+REPO = "Mrsirlila/dsh-gocket"
 VERSION_RE = re.compile(r"^(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)(?:\+(\d+))?$")
 BADGING_RE = re.compile(r"^package: .*?\bversionCode='(\d*)' versionName='([^']*)'", re.MULTILINE)
 CACHE = pathlib.Path.home() / ".cache" / "dshgo-release" / "apk"
@@ -79,7 +80,7 @@ def find_aapt2() -> str | None:
             sdks.append(match.group(1).strip())
     for sdk in filter(None, sdks):
         tools = sorted(
-            pathlib.Path(sdk).glob("build-tools/*/aapt2"),
+            (p for name in ("aapt2", "aapt2.exe") for p in pathlib.Path(sdk).glob(f"build-tools/*/{name}")),
             key=lambda p: tuple(int(n) for n in re.findall(r"\d+", p.parent.name)),
         )
         if tools:
@@ -191,6 +192,14 @@ def main() -> None:
         help="patches from the arm64 APKs of the N newest releases on GitHub (default 3; 0: none)",
     )
     parser.add_argument(
+        "--delta-apk",
+        type=pathlib.Path,
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="also make a patch from this local arm64 APK (repeatable; its version is read with aapt2)",
+    )
+    parser.add_argument(
         "apks",
         nargs="*",
         metavar="FLAVOR=PATH",
@@ -247,18 +256,31 @@ def main() -> None:
     for stale in args.out.glob("*.dshdelta"):
         stale.unlink()
     patches = []
-    if args.delta_from and "arm64" in assets:
+    patch_names = set()
+    if "arm64" in assets:
         try:
-            for old_tag in previous_releases(tag, args.delta_from):
-                old = published_apk(old_tag, CACHE)
+            for old in args.delta_apk:
+                if not old.is_file():
+                    raise ReleaseError(f"--delta-apk not found: {old}")
+                with zipfile.ZipFile(old) as apk:
+                    check_abis("arm64", apk.namelist())
                 old_name, old_code = apk_version(aapt2, old)
                 patch = patch_from(old, f"{old_name}+{old_code}", args.out / assets["arm64"]["name"], name, args.out)
-                if patch:
+                if patch and patch["name"] not in patch_names:
+                    patch_names.add(patch["name"])
                     patches.append(patch)
+            if args.delta_from:
+                for old_tag in previous_releases(tag, args.delta_from):
+                    old = published_apk(old_tag, CACHE)
+                    old_name, old_code = apk_version(aapt2, old)
+                    patch = patch_from(old, f"{old_name}+{old_code}", args.out / assets["arm64"]["name"], name, args.out)
+                    if patch and patch["name"] not in patch_names:
+                        patch_names.add(patch["name"])
+                        patches.append(patch)
         except (ReleaseError, apk_delta.DeltaError) as e:
             sys.exit(str(e))
     sums += [f"{patch['sha256']}  {patch['name']}" for patch in patches]
-    (args.out / "SHA256SUMS").write_text("\n".join(sums) + "\n", encoding="utf-8")
+    (args.out / "SHA256SUMS").write_bytes(("\n".join(sums) + "\n").encode())
 
     manifest = {
         "schema": 1,
@@ -272,7 +294,7 @@ def main() -> None:
     }
     if patches:
         manifest["patches"] = {"arm64": patches}
-    (args.out / "update.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (args.out / "update.json").write_bytes((json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode())
 
     try:
         built = f"{decode(build):%Y-%m-%d %H:%M} UTC+8"

@@ -6,7 +6,7 @@
 
 <p>
   <img src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
-  <img src="https://img.shields.io/badge/based%20on-dsh--Go%201.0.11-4f8cff?style=flat-square" alt="based on dsh-Go 1.0.10" />
+  <img src="https://img.shields.io/badge/based%20on-dsh--Go%201.0.11-4f8cff?style=flat-square" alt="based on dsh-Go 1.0.11" />
   <img src="https://img.shields.io/badge/plugin-dsh--pocket--plus-8b5cf6?style=flat-square" alt="dsh-pocket-plus" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="AGPL-3.0" /></a>
 </p>
@@ -66,7 +66,7 @@ App 里打开 **远程主机 → DSH Pocket 主机 → 添加 Pocket 主机**，
 ## 安装须知
 
 - **签名**：本项目的 APK 用独立的签名密钥。它和官方 dsh-Go、和其他人编的版本签名都不一样，**第一次从这些版本换过来需要先卸载**（卸载会清除 App 数据，手机本机上的对话请先「导出对话日志」）。之后本项目的新版本都可以直接覆盖安装。
-- **App 内更新提示**：App 内置的更新检查指向官方 dsh-Go。官方版本签名不同，没法覆盖安装，装了也会失去 Pocket 主机功能。请到本仓库的 Releases 下载更新。
+- **App 内更新**：更新检查指向本仓库 Releases，从 **v1.0.12-gocket.1** 起可在 App 内下载增量补丁并覆盖安装。旧版本仍要先手动安装一次带新更新源的 APK。
 - **包名**：沿用上游的 `io.github.ccch1mneyyy.dsh_app`，所以不能和官方 dsh-Go 同时安装。
 
 ## 自己编译

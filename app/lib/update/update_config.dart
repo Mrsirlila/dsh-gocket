@@ -1,27 +1,33 @@
 /// Where in-app updates come from. Everything network-facing about updates is
 /// configured here; the conventions and trade-offs are in `docs/release.md`.
 ///
-/// Every build asks our own copy of the release files first
-/// ([updateDownloadOrigin]: `/update.json`, `/download/<version>/<file>`), then
-/// GitHub and the public accelerators, and the rate-limited GitHub API last.
-/// Beta builds carry a channel token (`--dart-define=DSH_BETA_CHANNEL_TOKEN`,
-/// put in by `tooling/build-apk.sh`): they ask the beta channel before all of
-/// that ([UpdateChannel], `go.dshtui.com/beta/update.json`,
-/// docs/design/share-links.md) and download from it with the token.
+/// Every build asks `update.json` through GitHub and the public accelerators,
+/// then the rate-limited GitHub API last. `DSH_UPDATE_MIRROR` can add a
+/// copy of the release files (`/update.json`, `/download/<version>/<file>`)
+/// in front of them. Beta builds carry a channel token
+/// (`--dart-define=DSH_BETA_CHANNEL_TOKEN`, put in by `tooling/build-apk.sh`):
+/// they ask the beta channel before all of that ([UpdateChannel],
+/// `go.dshtui.com/beta/update.json`, docs/design/share-links.md) and download
+/// from it with the token.
 ///
 /// Build-time overrides (no code change needed):
 /// - `--dart-define=DSH_BETA_CHANNEL_ORIGIN=https://example.com` moves the beta
 ///   channel;
-/// - `--dart-define=DSH_UPDATE_MIRROR=https://example.com` moves the copy of
-///   the release files (empty string = none);
+/// - `--dart-define=DSH_UPDATE_MIRROR=https://example.com` adds a copy of the
+///   release files (empty string = none, the default);
 /// - `--dart-define=DSH_UPDATE_FEED=https://example.com/dsh/update.json`
-///   asks another manifest in place of the copy's (empty string = none);
+///   asks another manifest in place of the release's `update.json` (empty
+///   string = none);
 /// - `--dart-define=DSH_UPDATE_MIRRORS=https://a.example/,https://b.example/`
 ///   replaces the public GitHub accelerator list (empty string = none).
 library;
 
-/// GitHub repository the releases live in.
-const updateRepo = 'ccch1mneyyy/dsh-go';
+/// Upstream project repository. Its community feed and project links stay
+/// there even when this build's releases live somewhere else.
+const upstreamRepo = 'ccch1mneyyy/dsh-go';
+
+/// GitHub repository this build's releases live in.
+const updateRepo = 'Mrsirlila/dsh-gocket';
 
 /// `releases/latest` of the REST API: tag, notes, assets with sizes and
 /// SHA-256 digests. Unauthenticated: 60 requests per hour per IP.
@@ -39,13 +45,8 @@ Uri githubReleaseAsset(String tag, String name) =>
     Uri.parse('https://github.com/$updateRepo/releases/download/$tag/$name');
 
 /// The share host (services/share-worker). It serves the beta channel under
-/// `/beta/`; public files come from [updateDownloadOrigin].
+/// `/beta/`.
 const updateMirrorOrigin = 'https://go.dshtui.com';
-
-/// Our public copy of the release files (an R2 bucket): `/update.json`, the
-/// latest public manifest with absolute asset URLs, and
-/// `/download/<version>/<file>` for every file of every release.
-const updateDownloadOrigin = 'https://dl.dshtui.com';
 
 /// The beta channel: `<origin>/beta/update.json` and `<origin>/beta/<version>/<file>`,
 /// both behind `Authorization: Bearer <token>`. The token is compiled into beta
@@ -104,8 +105,8 @@ class UpdateMirror {
 
   static const github = UpdateMirror(id: 'github', label: 'GitHub');
 
-  /// The app's own mirror at [origin] (default [updateDownloadOrigin]).
-  static UpdateMirror selfHosted([String origin = updateDownloadOrigin]) {
+  /// A copy of the release files at [origin].
+  static UpdateMirror selfHosted(String origin) {
     final base = origin.endsWith('/') ? origin.substring(0, origin.length - 1) : origin;
     return UpdateMirror(id: 'dshgo', label: Uri.tryParse(base)?.host ?? base, releases: '$base/download/');
   }
@@ -145,7 +146,7 @@ const publicMirrors = [
 ];
 
 const _unset = '\u0000';
-const _mirrorDefine = String.fromEnvironment('DSH_UPDATE_MIRROR', defaultValue: updateDownloadOrigin);
+const _mirrorDefine = String.fromEnvironment('DSH_UPDATE_MIRROR', defaultValue: '');
 const _feedDefine = String.fromEnvironment('DSH_UPDATE_FEED', defaultValue: _unset);
 const _mirrorsDefine = String.fromEnvironment('DSH_UPDATE_MIRRORS', defaultValue: _unset);
 const _betaTokenDefine = String.fromEnvironment('DSH_BETA_CHANNEL_TOKEN');
@@ -166,7 +167,7 @@ UpdateSources defaultUpdateSources() => buildUpdateSources(
 /// [publicMirrors] (null = keep them); [channelToken] turns on the beta
 /// channel at [channelOrigin] ('' = off).
 UpdateSources buildUpdateSources({
-  String mirror = updateDownloadOrigin,
+  String mirror = '',
   String? feed,
   String? accelerators,
   String channelToken = '',
@@ -225,14 +226,14 @@ class UpdateEndpoint {
 /// The ordered list of update sources.
 ///
 /// Metadata: the beta channel (beta builds only; always asked first, since a
-/// GitHub release can lag behind it) → our `update.json` → `update.json` on
-/// the latest release through each GitHub mirror, GitHub first → GitHub API.
-/// Downloads: the asset's own URL (the channel's, with its token, when the
-/// channel answered), then each mirror in order, our copy first. Apart from
-/// the channel and the API, whatever worked last time moves to the front, so
-/// a phone that can't reach one source stops waiting on it every time. The
-/// API stays last even then: anonymous calls get 60 an hour per IP, shared
-/// IPs often find them spent, and its answer carries no delta patches.
+/// GitHub release can lag behind it) → `update.json` on the latest release
+/// through each GitHub mirror, GitHub first → GitHub API. Downloads: the
+/// asset's own URL (the channel's, with its token, when the channel answered),
+/// then each mirror in order. Apart from the channel and the API, whatever
+/// worked last time moves to the front, so a phone that can't reach one
+/// source stops waiting on it every time. The API stays last even then:
+/// anonymous calls get 60 an hour per IP, shared IPs often find them spent,
+/// and its answer carries no delta patches.
 class UpdateSources {
   const UpdateSources({this.channel, this.feed, this.useGithubApi = true, this.mirrors = const [UpdateMirror.github]});
 

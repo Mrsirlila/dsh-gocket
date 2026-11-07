@@ -19,11 +19,11 @@ import 'support.dart';
 const _token = 'dshc_0123456789abcdefghijklmnopqrstuvwxyzABCDEFG';
 const _auth = 'Bearer $_token';
 const _feed = 'https://go.dshtui.com/beta/update.json';
-const _api = 'https://api.github.com/repos/ccch1mneyyy/dsh-go/releases/latest';
+const _api = 'https://api.github.com/repos/Mrsirlila/dsh-gocket/releases/latest';
 const _apk = 'dsh-go-1.2.0-arm64.apk';
 const _betaApk = 'https://go.dshtui.com/beta/1.2.0/$_apk';
-const _githubApk = 'https://github.com/ccch1mneyyy/dsh-go/releases/download/v1.2.0/$_apk';
-const _dlFeed = 'https://dl.dshtui.com/update.json';
+const _githubApk = 'https://github.com/Mrsirlila/dsh-gocket/releases/download/v1.2.0/$_apk';
+const _githubManifest = 'https://github.com/Mrsirlila/dsh-gocket/releases/latest/download/update.json';
 
 final _bytes = utf8.encode('PK pretend this is the 1.2.0 beta for arm64');
 
@@ -106,7 +106,7 @@ void main() {
       expect(sources.metadataEndpoints(preferred: 'manifest:ghfast').map((e) => e.id).take(3), [
         'beta',
         'manifest:ghfast',
-        'feed',
+        'manifest:github',
       ]);
       expect(sources.metadataEndpoints().first.toString(), isNot(contains(_token)));
     });
@@ -115,7 +115,6 @@ void main() {
       final urls = sources.downloadUrls([Uri.parse(_betaApk), Uri.parse(_githubApk)]);
       expect(urls.map((u) => u.url.toString()), [
         _betaApk,
-        'https://dl.dshtui.com/download/1.2.0/$_apk',
         _githubApk,
         'https://ghfast.top/$_githubApk',
         'https://gh-proxy.com/$_githubApk',
@@ -142,10 +141,10 @@ void main() {
 
     test('the channel refuses (token revoked) or is down: the public sources answer, without the token', () async {
       for (final route in <Route?>[(_, _) => textResponse('Unauthorized', status: 401), null]) {
-        var http = FakeHttp({_feed: ?route, _dlFeed: (_, _) => textResponse(fixture('update.json'))});
+        var http = FakeHttp({_feed: ?route, _githubManifest: (_, _) => textResponse(fixture('update.json'))});
         var result = await UpdateChecker(http: http, sources: sources).check();
-        expect(http.urls, [_feed, _dlFeed]);
-        expect((result as CheckFound).endpoint.id, 'feed');
+        expect(http.urls, [_feed, _githubManifest]);
+        expect((result as CheckFound).endpoint.id, 'manifest:github');
         _expectTokenOnlyOnChannel(http);
 
         http = FakeHttp({_feed: ?route, _api: (_, _) => textResponse(fixture('github_release.json'))});

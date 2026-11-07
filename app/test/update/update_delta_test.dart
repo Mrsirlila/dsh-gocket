@@ -27,9 +27,9 @@ import 'support.dart';
 const _version = '1.2.0+11011200';
 const _apk = 'dsh-go-1.2.0-arm64.apk';
 const _patchName = 'dsh-go-1.0.0-to-1.2.0-arm64.dshdlt';
-const _feed = 'https://dl.dshtui.com/update.json';
-const _dl = 'https://dl.dshtui.com/download/1.2.0';
-const _github = 'https://github.com/ccch1mneyyy/dsh-go/releases/download/v1.2.0';
+const _feed = 'https://github.com/Mrsirlila/dsh-gocket/releases/latest/download/update.json';
+const _files = 'https://github.com/Mrsirlila/dsh-gocket/releases/download/v1.2.0';
+const _ghfast = 'https://ghfast.top/$_files';
 
 final _old = utf8.encode('PK the installed 1.0.0, ${'resources ' * 300}${'classes ' * 300}');
 final _new = [..._old.sublist(0, 2000), ...utf8.encode('the 1.2.0 code'), ..._old.sublist(2400)];
@@ -47,7 +47,7 @@ Map<String, Object?> _manifest({List<int>? patch, String? from, bool patches = t
   'version': _version,
   'tag': 'v1.2.0',
   'assets': {
-    'arm64': {'name': _apk, 'url': '$_dl/$_apk', 'size': _new.length, 'sha256': _sha(_new)},
+    'arm64': {'name': _apk, 'url': '$_files/$_apk', 'size': _new.length, 'sha256': _sha(_new)},
   },
   if (patches)
     'patches': {
@@ -81,7 +81,7 @@ void main() {
   setUp(() {
     dir = Directory.systemTemp.createTempSync('dsh_update_delta');
     installed = File('${dir.path}/base.apk')..writeAsBytesSync(_old);
-    http = FakeHttp({_feed: (_, _) => textResponse(jsonEncode(_manifest())), '$_dl/$_apk': fileRoute(_new)});
+    http = FakeHttp({_feed: (_, _) => textResponse(jsonEncode(_manifest())), '$_files/$_apk': fileRoute(_new)});
     installer = FakeInstaller(app: app());
     SharedPreferences.setMockInitialValues({});
   });
@@ -115,7 +115,7 @@ void main() {
   }
 
   test('the offer says the patch\'s size; only the patch comes, and the APK built from it is installed', () async {
-    http.routes['$_dl/$_patchName'] = fileRoute(_patch);
+    http.routes['$_files/$_patchName'] = fileRoute(_patch);
     final (c, controller) = await checked();
     var state = c.read(appUpdateProvider);
     expect(state.installedSha256, _sha(_old));
@@ -127,7 +127,7 @@ void main() {
     state = c.read(appUpdateProvider);
     expect(state.task, UpdateTaskPhase.ready);
     expect(state.total, _patch.length);
-    expect(state.source, 'dl.dshtui.com');
+    expect(state.source, 'GitHub');
     expect(built().readAsBytesSync(), _new);
     expect(downloads().listSync().map((f) => f.uri.pathSegments.last), [_apk], reason: 'the patch is gone');
     expect(asked(_apk), isEmpty);
@@ -141,14 +141,14 @@ void main() {
     var calls = 0;
     final dropping = fileRoute(_patch, dropAfter: 40);
     final full = fileRoute(_patch);
-    // Our copy doesn't have it; GitHub drops once.
-    http.routes['$_dl/$_patchName'] = (_, _) => textResponse('Not Found', status: 404);
-    http.routes['$_github/$_patchName'] = (url, headers) => calls++ == 0 ? dropping(url, headers) : full(url, headers);
+    // GitHub doesn't have it; ghfast.top drops once, then resumes.
+    http.routes['$_files/$_patchName'] = (_, _) => textResponse('Not Found', status: 404);
+    http.routes['$_ghfast/$_patchName'] = (url, headers) => calls++ == 0 ? dropping(url, headers) : full(url, headers);
     final (c, controller) = await checked();
     await controller.startDownload();
     expect(c.read(appUpdateProvider).task, UpdateTaskPhase.ready);
     expect(built().readAsBytesSync(), _new);
-    expect(http.requests.where((r) => r.$1.toString() == '$_github/$_patchName').last.$2['range'], 'bytes=40-');
+    expect(http.requests.where((r) => r.$1.toString() == '$_ghfast/$_patchName').last.$2['range'], 'bytes=40-');
     expect(asked(_apk), isEmpty);
   });
 
@@ -156,17 +156,17 @@ void main() {
     final broken = {
       'not on any mirror': (FakeHttp http) {},
       'not what the manifest says (its SHA-256)': (FakeHttp http) {
-        http.routes['$_dl/$_patchName'] = fileRoute([..._patch]..[100] ^= 1);
+        http.routes['$_files/$_patchName'] = fileRoute([..._patch]..[100] ^= 1);
       },
       'for another base APK': (FakeHttp http) {
         final other = deltaPatch(utf8.encode('another 1.0.0 build'), _new, [deltaData(_new), deltaEnd]);
         http.routes[_feed] = (_, _) => textResponse(jsonEncode(_manifest(patch: other)));
-        http.routes['$_dl/$_patchName'] = fileRoute(other);
+        http.routes['$_files/$_patchName'] = fileRoute(other);
       },
       'building something else': (FakeHttp http) {
         final wrong = deltaPatch(_old, _new, [deltaCopy(0, _new.length), deltaEnd]);
         http.routes[_feed] = (_, _) => textResponse(jsonEncode(_manifest(patch: wrong)));
-        http.routes['$_dl/$_patchName'] = fileRoute(wrong);
+        http.routes['$_files/$_patchName'] = fileRoute(wrong);
       },
     };
     for (final MapEntry(key: name, value: arrange) in broken.entries) {
@@ -218,7 +218,7 @@ void main() {
     expect(c.read(appUpdateProvider).downloadSize, _new.length);
     await controller.startDownload();
     expect(c.read(appUpdateProvider).task, UpdateTaskPhase.ready);
-    expect(http.urls, [_feed, '$_dl/$_apk']);
+    expect(http.urls, [_feed, '$_files/$_apk']);
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('update_installed_sha256'), isNull);
     expect(jsonDecode(prefs.getString('update_latest')!), isNot(contains('patches')));
@@ -241,7 +241,7 @@ void main() {
   });
 
   test('the cached offer keeps its patches; an APK already built is checked and kept', () async {
-    http.routes['$_dl/$_patchName'] = fileRoute(_patch);
+    http.routes['$_files/$_patchName'] = fileRoute(_patch);
     final (_, controller) = await checked();
     await controller.startDownload();
 
@@ -260,7 +260,7 @@ void main() {
     final release = parseUpdateManifest({
       ..._manifest(),
       'assets': {
-        'arm64': {'name': _apk, 'url': '$_dl/$_apk', 'size': 180107933, 'sha256': _sha(_new)},
+        'arm64': {'name': _apk, 'url': '$_files/$_apk', 'size': 180107933, 'sha256': _sha(_new)},
       },
       'patches': {
         'arm64': [
