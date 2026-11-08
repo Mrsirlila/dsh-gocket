@@ -159,6 +159,15 @@ abstract final class RiskNotices {
     action: appL10n.phonePrivilegedRootPrepare,
   );
 
+  /// 设置 › AI › ROOT权限: every time the direct root switch is turned on.
+  static RiskNotice get rootAccess => RiskNotice(
+    id: 'settings.root-access',
+    level: RiskLevel.high,
+    title: appL10n.riskRootAccessTitle,
+    body: appL10n.riskRootAccessBody,
+    action: appL10n.riskRootAccessAction,
+  );
+
   /// 宠物 › App 外显示, before the trip to 「显示在其他应用上层」.
   static RiskNotice get petOverlay => RiskNotice(
     id: 'pets.overlay-permission',

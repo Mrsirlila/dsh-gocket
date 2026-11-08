@@ -33,6 +33,7 @@
   "searchKwAccount": "账号,余额,充值,登录,退出登录,API Key,用量,DeepSeek",
   "searchKwRemote": "远程,SSH,电脑,服务器,DSH Remote,连接电脑",
   "searchKwPermission": "权限,别问我,确认,审批,自动允许,只读,完全权限,自动执行命令",
+  "searchKwRootAccess": "root,su,超级用户,特权,ROOT权限",
   "searchKwAgentPresets": "预设,模式,工作方式",
   "searchKwUiMode": "原生,网页,网页模式,界面,切换界面",
   "searchKwLanguage": "中文,英文,简体,English",

@@ -13502,6 +13502,60 @@ abstract class L10n {
   /// **'二次开发者'**
   String get hubAboutContributor;
 
+  /// No description provided for @hubRootAccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'ROOT权限'**
+  String get hubRootAccess;
+
+  /// No description provided for @rootAccessTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'ROOT权限开关'**
+  String get rootAccessTitle;
+
+  /// No description provided for @rootAccessWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'危险！请注意使用安全'**
+  String get rootAccessWarning;
+
+  /// No description provided for @rootAccessSuOk.
+  ///
+  /// In zh, this message translates to:
+  /// **'已检测到 su，接口可用'**
+  String get rootAccessSuOk;
+
+  /// No description provided for @rootAccessSuMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检测到 su：设备未获取 ROOT，接口不可用'**
+  String get rootAccessSuMissing;
+
+  /// No description provided for @rootAccessEnabledHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启后，App 内的接口可通过 su 直接执行特权命令'**
+  String get rootAccessEnabledHint;
+
+  /// No description provided for @riskRootAccessTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定开启 ROOT 权限？'**
+  String get riskRootAccessTitle;
+
+  /// No description provided for @riskRootAccessBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启后应用内的接口将以 ROOT 身份执行命令，误用可能损坏系统或丢失数据。'**
+  String get riskRootAccessBody;
+
+  /// No description provided for @riskRootAccessAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'仍然开启'**
+  String get riskRootAccessAction;
+
   /// No description provided for @hubAboutBilibili.
   ///
   /// In zh, this message translates to:
@@ -25345,6 +25399,12 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'权限,别问我,确认,审批,自动允许,只读,完全权限,自动执行命令'**
   String get searchKwPermission;
+
+  /// No description provided for @searchKwRootAccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'root,su,超级用户,特权,ROOT权限'**
+  String get searchKwRootAccess;
 
   /// No description provided for @searchKwAgentPresets.
   ///

@@ -60,6 +60,7 @@ enum SettingsPageId {
   hub,
   models,
   permission,
+  rootAccess,
   personalization,
   replyPrefs,
   agentPresets,
@@ -314,6 +315,13 @@ final _pages = <SettingsPageMeta>[
     keywords: (l) => l.searchKwPermission,
     freq: Freq.medium,
     links: const ['permission'],
+  ),
+  SettingsPageMeta(
+    SettingsPageId.rootAccess,
+    title: (l) => l.rootAccessTitle,
+    group: _ai,
+    keywords: (l) => l.searchKwRootAccess,
+    links: const ['root'],
   ),
   SettingsPageMeta(
     SettingsPageId.personalization,

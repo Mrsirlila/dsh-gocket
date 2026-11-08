@@ -7797,6 +7797,34 @@ class L10nEn extends L10n {
   String get hubAboutContributor => 'Fork developer';
 
   @override
+  String get hubRootAccess => 'ROOT access';
+
+  @override
+  String get rootAccessTitle => 'ROOT access switch';
+
+  @override
+  String get rootAccessWarning => 'Danger! Use with care.';
+
+  @override
+  String get rootAccessSuOk => 'su found; the interface is usable';
+
+  @override
+  String get rootAccessSuMissing => 'No su found: the device is not rooted, the interface is unusable';
+
+  @override
+  String get rootAccessEnabledHint => 'Once on, the in-app interface can run privileged commands via su';
+
+  @override
+  String get riskRootAccessTitle => 'Turn on ROOT access?';
+
+  @override
+  String get riskRootAccessBody =>
+      'Once on, the in-app interface runs commands as root. Misuse can damage the system or lose data.';
+
+  @override
+  String get riskRootAccessAction => 'Turn on anyway';
+
+  @override
   String get hubAboutBilibili => 'Bilibili profile';
 
   @override
@@ -14562,6 +14590,9 @@ class L10nEn extends L10n {
 
   @override
   String get searchKwPermission => 'permissions,approval,don\'t ask,read only,full access,auto-run commands';
+
+  @override
+  String get searchKwRootAccess => 'root,su,superuser,privileged';
 
   @override
   String get searchKwAgentPresets => 'presets,mode,agent mode';

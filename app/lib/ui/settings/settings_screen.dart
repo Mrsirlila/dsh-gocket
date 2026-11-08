@@ -57,6 +57,7 @@ import 'language_tile.dart';
 import 'notification_settings.dart';
 import 'performance_page.dart';
 import 'personalization_page.dart';
+import 'root_access_page.dart';
 import 'privacy_page.dart';
 import 'search/settings_search_page.dart';
 import 'settings_widgets.dart';
@@ -153,6 +154,13 @@ class SettingsScreen extends ConsumerWidget {
               spot: SettingsIndex.entry(SettingsPageId.permission),
               value: text(permission?.$1, color: permission?.$2 == true ? colors.warning : null),
               onTap: () => _push(context, PermissionPage(sessionId: ref.read(currentSessionProvider))),
+            ),
+            SettingsTile(
+              icon: AppIcons.securityWarning,
+              tint: SettingsHues.ai,
+              spot: SettingsIndex.entry(SettingsPageId.rootAccess),
+              title: l10n.hubRootAccess,
+              onTap: () => _push(context, const RootAccessPage()),
             ),
             SettingsTile(
               icon: AppIcons.profile,

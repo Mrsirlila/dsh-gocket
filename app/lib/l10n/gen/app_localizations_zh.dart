@@ -7371,6 +7371,33 @@ class L10nZh extends L10n {
   String get hubAboutContributor => '二次开发者';
 
   @override
+  String get hubRootAccess => 'ROOT权限';
+
+  @override
+  String get rootAccessTitle => 'ROOT权限开关';
+
+  @override
+  String get rootAccessWarning => '危险！请注意使用安全';
+
+  @override
+  String get rootAccessSuOk => '已检测到 su，接口可用';
+
+  @override
+  String get rootAccessSuMissing => '未检测到 su：设备未获取 ROOT，接口不可用';
+
+  @override
+  String get rootAccessEnabledHint => '开启后，App 内的接口可通过 su 直接执行特权命令';
+
+  @override
+  String get riskRootAccessTitle => '确定开启 ROOT 权限？';
+
+  @override
+  String get riskRootAccessBody => '开启后应用内的接口将以 ROOT 身份执行命令，误用可能损坏系统或丢失数据。';
+
+  @override
+  String get riskRootAccessAction => '仍然开启';
+
+  @override
   String get hubAboutBilibili => 'B站主页';
 
   @override
@@ -13846,6 +13873,9 @@ class L10nZh extends L10n {
 
   @override
   String get searchKwPermission => '权限,别问我,确认,审批,自动允许,只读,完全权限,自动执行命令';
+
+  @override
+  String get searchKwRootAccess => 'root,su,超级用户,特权,ROOT权限';
 
   @override
   String get searchKwAgentPresets => '预设,模式,工作方式';

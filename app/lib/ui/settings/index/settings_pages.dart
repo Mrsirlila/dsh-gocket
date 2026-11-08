@@ -33,6 +33,7 @@ import '../notification_settings.dart';
 import '../performance_page.dart';
 import '../personalization_page.dart';
 import '../privacy_page.dart';
+import '../root_access_page.dart';
 import '../reply_prefs_page.dart';
 import '../settings_screen.dart';
 import '../system_access_page.dart';
@@ -76,6 +77,7 @@ Widget settingsPage(SettingsPageId id, {String? sessionId}) => switch (id) {
   SettingsPageId.permission => PermissionPage(sessionId: sessionId),
   SettingsPageId.agentPresets => const AgentPresetsPage(),
   SettingsPageId.personalization => const PersonalizationPage(),
+  SettingsPageId.rootAccess => const RootAccessPage(),
   SettingsPageId.interface => const InterfacePage(),
   SettingsPageId.privacy => const PrivacyPage(),
   SettingsPageId.about => const AboutPage(),
