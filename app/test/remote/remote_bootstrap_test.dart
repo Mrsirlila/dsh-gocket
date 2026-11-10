@@ -313,5 +313,6 @@ DSHAPP url dsh web: http://127.0.0.1:51234/?token=launch-tok
       await b.stop();
       expect(File('${alt.path}/.dsh-app-remote/web.pid').existsSync(), isFalse);
     });
-  });
+    // The fixture needs /bin/sh, chmod, ps and symbolic links.
+  }, skip: Platform.isWindows ? 'needs /bin/sh and symlinks' : null);
 }

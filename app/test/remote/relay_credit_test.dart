@@ -8,7 +8,6 @@ import 'package:dsh_app/runtime/runtime_state.dart';
 import 'package:dsh_app/state/connection_state.dart';
 import 'package:dsh_app/state/hosts_state.dart';
 import 'package:dsh_app/state/star_prompt.dart' show starLinkOpenerProvider;
-import 'package:dsh_app/ui/common/app_sheet.dart' show SheetGroup;
 import 'package:dsh_app/ui/remote/relay_credit.dart';
 import 'package:dsh_app/ui/remote/remote_screen.dart';
 import 'package:flutter/gestures.dart';
@@ -76,6 +75,10 @@ void main() {
       ),
     );
     await frames(tester);
+    // The credit lives at the foot of the sign-in sheet, which the hosts
+    // group opens; the merge with DSH Pocket moved it out of the page.
+    await tester.tap(find.byKey(const ValueKey('remote-relay-sign-in')));
+    await frames(tester, 6);
   }
 
   RenderParagraph paragraph(WidgetTester tester) => tester.renderObject<RenderParagraph>(
@@ -129,8 +132,6 @@ void main() {
     return region;
   }
 
-  Finder card(String text) => find.ancestor(of: find.text(text), matching: find.byType(SheetGroup));
-
   testWidgets('reads 服务由 liguobao/ds-harness-remote 提供', (tester) async {
     await pump(tester);
     expect(creditText(tester), startsWith('服务由 liguobao/ds-harness-remote\u2060\uFFFC 提供'));
@@ -170,31 +171,28 @@ void main() {
     await pump(tester);
     final line = lineRect(tester);
     final x = partRect(tester, 'liguobao/ds-harness-remote').center.dx;
-    await tester.tapAt(Offset(x, line.top - 7));
+    await tester.tapAt(Offset(x, line.top - 4));
     await frames(tester, 2);
     expect(opened, hasLength(1));
-    await tester.tapAt(Offset(x, line.bottom + 20));
+    await tester.tapAt(Offset(x, line.bottom + 12));
     await frames(tester, 2);
     expect(opened, hasLength(2));
   });
 
   testWidgets('the tap area is 48dp tall and overlaps no other control', (tester) async {
     await pump(tester);
-    final relayCard = tester.getRect(card('登录 DSH Remote'));
-    // One button per sign-in provider; the lowest one sits nearest the credit line.
+    // In the sheet the credit closes the content: the sign-in buttons above it
+    // are its only neighbours, and no section follows.
     final signIn = tester.getRect(find.byWidgetPredicate((w) => w is FilledButton).last);
     final selfHosted = tester.getRect(find.widgetWithText(TextButton, '自建服务器 · 邮箱登录'));
-    final sshTitle = tester.getRect(find.text('SSH 主机'));
-    final sshCard = tester.getRect(card('添加 SSH 主机'));
     final line = lineRect(tester);
     final name = partRect(tester, 'liguobao/ds-harness-remote');
     final glyph = tester.getRect(find.descendant(of: find.byType(RelayCredit), matching: find.byType(Icon)));
 
-    // Every point from the sign-in button to the SSH card, 1dp apart.
-    final region = linkRegion(tester, signIn.top, sshCard.bottom)!;
-    expect(region.top, greaterThanOrEqualTo(relayCard.bottom), reason: 'stays out of the card');
-    expect(region.bottom, lessThan(sshTitle.top), reason: 'stays out of the next section');
-    for (final (label, rect) in [('sign-in', signIn), ('self-hosted', selfHosted), ('SSH card', sshCard)]) {
+    // Every point above and below the line, 1dp apart.
+    final region = linkRegion(tester, line.top - 12, line.bottom + 32)!;
+    expect(region.top, greaterThanOrEqualTo(selfHosted.bottom), reason: 'stays out of the sign-in buttons');
+    for (final (label, rect) in [('sign-in', signIn), ('self-hosted', selfHosted)]) {
       expect(region.overlaps(rect), isFalse, reason: '$label $rect vs link $region');
     }
     // Only the name and its glyph across.
@@ -212,22 +210,18 @@ void main() {
     expect(bottom - top, greaterThanOrEqualTo(kMinInteractiveDimension - 0.5));
     expect(bottom - top, lessThanOrEqualTo(kMinInteractiveDimension + 0.5));
 
-    // The neighbours keep their own edges.
-    for (final edge in [
-      Offset(selfHosted.center.dx, selfHosted.bottom - 0.5),
-      Offset(sshCard.center.dx, sshCard.top + 0.5),
-      Offset(signIn.center.dx, signIn.bottom - 0.5),
-    ]) {
-      expect(hitsLink(tester, edge), isFalse, reason: '$edge');
-    }
+    // The neighbour keeps its own edge.
+    expect(hitsLink(tester, Offset(selfHosted.center.dx, selfHosted.bottom - 0.5)), isFalse);
   });
 
   testWidgets('the layout is that of a plain footer', (tester) async {
     await pump(tester);
     final line = lineRect(tester);
-    // Card → 8 → the line → the section margin (24) → the next section's title.
-    expect(line.top - tester.getRect(card('登录 DSH Remote')).bottom, closeTo(8, 0.01));
-    expect(tester.getRect(find.text('远程传输')).top - line.bottom, closeTo(24, 0.01));
+    final selfHosted = tester.getRect(find.widgetWithText(TextButton, '自建服务器 · 邮箱登录'));
+    final credit = tester.getRect(find.byType(RelayCredit));
+    // Card's own 12 of padding → 8 → the line → the credit's 24 below.
+    expect(credit.top - (selfHosted.bottom + 12), closeTo(8, 0.01));
+    expect(credit.bottom - line.bottom, closeTo(24, 0.01));
   });
 
   testWidgets('signing in still opens the sign-in page, not the project', (tester) async {
@@ -292,8 +286,8 @@ void main() {
     expect(opened, [Uri.parse(_project)]);
     // The same reach above and below the line.
     final x = partRect(tester, 'liguobao/ds-harness-remote').center.dx;
-    await tester.tapAt(Offset(x, lineRect(tester).top - 7));
-    await tester.tapAt(Offset(x, lineRect(tester).bottom + 20));
+    await tester.tapAt(Offset(x, lineRect(tester).top - 4));
+    await tester.tapAt(Offset(x, lineRect(tester).bottom + 12));
     await frames(tester, 2);
     expect(opened, hasLength(3));
   });

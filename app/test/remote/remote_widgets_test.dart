@@ -83,6 +83,15 @@ void main() {
     }
   }
 
+  /// The DSH Pocket / Remote group holds one sign-in row; the providers and the
+  /// credit live in the sheet it opens.
+  Future<void> openRelayLogin(WidgetTester tester) async {
+    final row = find.byKey(const ValueKey('remote-relay-sign-in'));
+    expect(row, findsOneWidget);
+    await tester.tap(row);
+    await frames(tester, 4);
+  }
+
   testWidgets('expired relay login offers 重新登录 even after account sign-out', (tester) async {
     relay.user = null;
     linkStatus = const HostLinkStatus(
@@ -100,6 +109,7 @@ void main() {
     relay.user = null;
     await pump(tester, const RemoteScreen());
     await frames(tester, 3);
+    await openRelayLogin(tester);
     for (final provider in ['GitHub', '知乎', 'Google']) {
       expect(find.widgetWithText(FilledButton, '使用 $provider 登录'), findsOneWidget);
     }
@@ -228,6 +238,7 @@ void main() {
     relay.user = null;
     final c = await pump(tester, const RemoteScreen());
     await frames(tester, 3);
+    await openRelayLogin(tester);
     await tester.tap(find.text('自建服务器 · 邮箱登录'));
     await frames(tester);
     await tester.enterText(find.byType(TextField).at(0), 'remote.example.com');
@@ -244,6 +255,7 @@ void main() {
     relay.user = null;
     await pump(tester, const RemoteScreen());
     await frames(tester, 3);
+    await openRelayLogin(tester);
     await tester.tap(find.text('自建服务器 · 邮箱登录'));
     await frames(tester);
     await tester.enterText(find.byType(TextField).at(0), 'http://public.example.com');

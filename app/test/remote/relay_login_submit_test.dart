@@ -68,6 +68,9 @@ void main() {
         ),
       );
       await _frames(tester);
+      // The merged hosts group keeps the providers in a sign-in sheet.
+      await tester.tap(find.byKey(const ValueKey('remote-relay-sign-in')));
+      await _frames(tester);
       final c = ProviderScope.containerOf(
         tester.element(find.byType(MaterialApp)),
       );

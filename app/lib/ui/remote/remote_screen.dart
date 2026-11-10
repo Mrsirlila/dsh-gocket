@@ -601,8 +601,15 @@ class _RelayLoginSheet extends ConsumerWidget {
           children: [
             _LoginCard(account: account, available: available, loading: async.isLoading && !async.hasValue),
             if (available)
+              // Same footing as the footer it used to be: the gap above and
+              // the credit's own gap below give its link a 48dp tap area.
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: SettingsMetrics.inset),
+                padding: const EdgeInsets.fromLTRB(
+                  SettingsMetrics.inset,
+                  SettingsSection.footerGap,
+                  SettingsMetrics.inset,
+                  0,
+                ),
                 child: RelayCredit(server: server.isEmpty || server == 'dsh.r2049.cn' ? null : server),
               ),
           ],

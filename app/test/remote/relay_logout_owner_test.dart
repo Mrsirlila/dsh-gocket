@@ -22,6 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../packages/dsh_remote/test/support/fake_remote.dart';
+import 'support/relay_sign_in_sheet.dart';
 import '../shell/golden_harness.dart' show FakeRuntime, runningStatus, usePhoneSurface;
 
 const _guard = Duration(seconds: 8);
@@ -318,6 +319,7 @@ Future<void> _confirmLogout(WidgetTester tester, _Fixture fixture, {required int
 Future<RelayUser> _signInAgain(WidgetTester tester, _Fixture fixture) async {
   expect(fixture.uiSignedIn, isFalse);
   expect(fixture.container.read(relayServerProvider) == fixture.server.url.origin, isTrue);
+  await ensureRelaySignInSheet(tester);
   await tester.runAsync(() => tester.tap(find.text(appL10n.remoteSelfHostedEmailSignIn)));
   await _frames(tester);
   expect(find.byType(SelfHostedLoginSheet), findsOneWidget);

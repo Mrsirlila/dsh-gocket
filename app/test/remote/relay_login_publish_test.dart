@@ -18,6 +18,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'real_io_driver.dart';
+import 'support/relay_sign_in_sheet.dart';
 import '../../../packages/dsh_remote/test/support/fake_remote.dart';
 import '../shell/golden_harness.dart'
     show FakeRuntime, runningStatus, usePhoneSurface;
@@ -105,6 +106,7 @@ Future<void> _emailLogin(
   Uri origin,
   String password,
 ) async {
+  await ensureRelaySignInSheet(tester);
   await tester.runAsync(
     () => tester.tap(find.text(appL10n.remoteSelfHostedEmailSignIn)),
   );

@@ -24,6 +24,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
 import 'real_io_driver.dart';
+import 'support/relay_sign_in_sheet.dart';
 import '../../../packages/dsh_remote/test/support/fake_remote.dart';
 import '../shell/golden_harness.dart'
     show FakeRuntime, runningStatus, usePhoneSurface;
@@ -434,10 +435,8 @@ Future<void> _withScreen(
 }
 
 Future<void> _openSheet(WidgetTester tester, Uri origin) async {
-  final entry = find.descendant(
-    of: find.byType(RemoteScreen),
-    matching: find.text(appL10n.remoteSelfHostedEmailSignIn),
-  );
+  await ensureRelaySignInSheet(tester);
+  final entry = find.text(appL10n.remoteSelfHostedEmailSignIn);
   expect(entry, findsOneWidget);
   await tester.runAsync(() => tester.tap(entry));
   await _frames(tester);
