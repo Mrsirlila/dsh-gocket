@@ -318,7 +318,7 @@ final _pages = <SettingsPageMeta>[
   ),
   SettingsPageMeta(
     SettingsPageId.rootAccess,
-    title: (l) => l.rootAccessTitle,
+    title: (l) => l.hubRootAccess,
     group: _ai,
     keywords: (l) => l.searchKwRootAccess,
     links: const ['root'],
@@ -963,6 +963,13 @@ abstract final class Spots {
     altTitle: (l) => l.phoneSafeLeave,
     keywords: (l) => l.searchKwSafeMode,
   );
+  static final workspaceRecovery = SettingSpot(
+    'workspace-recovery',
+    page: SettingsPageId.engine,
+    title: (l) => l.workspaceRecoveryEnable,
+    altTitle: (l) => l.workspaceRecoveryDisable,
+    keywords: (l) => l.searchKwWorkspaceRecovery,
+  );
   static final engineReset = SettingSpot(
     'engine-reset',
     page: SettingsPageId.engine,
@@ -983,11 +990,24 @@ abstract final class Spots {
     title: (l) => l.remoteAddSshHost,
     keywords: (l) => l.searchKwAddSshHost,
   );
+  static final pocketAddHost = SettingSpot(
+    'add-pocket-host',
+    page: SettingsPageId.remote,
+    title: (l) => l.pocketAddHost,
+    keywords: (l) => l.searchKwPocketAddHost,
+  );
   static final remoteAutoConnect = SettingSpot(
     'remote-auto-connect',
     page: SettingsPageId.remote,
     title: (l) => l.remoteAutoConnectOnStartup,
     keywords: (l) => l.searchKwRemoteAutoConnect,
+  );
+
+  static final remoteCompactHistory = SettingSpot(
+    'remote-compact-history',
+    page: SettingsPageId.remote,
+    title: (l) => l.remoteCompactHistory,
+    keywords: (l) => l.searchKwRemoteCompactHistory,
   );
 
   // 引擎参数 and its pages (drawn from the engine's schema).
@@ -1106,10 +1126,13 @@ final _rows = <SettingSpot>[
   Spots.autoStart,
   Spots.autoSafe,
   Spots.safeMode,
+  Spots.workspaceRecovery,
   Spots.engineReset,
   Spots.engineUninstall,
   Spots.addSshHost,
+  Spots.pocketAddHost,
   Spots.remoteAutoConnect,
+  Spots.remoteCompactHistory,
   Spots.subagentDepth,
   Spots.parallelCalls,
   Spots.commandTimeout,

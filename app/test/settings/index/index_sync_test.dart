@@ -51,7 +51,13 @@ import '../../shell/golden_harness.dart';
 /// list's spot covers it) or a row that only shows for a moment.
 final Map<SettingsPageId, List<String Function(L10n)>> _unlisted = {
   // The author's profiles are links, not settings to look up.
-  SettingsPageId.about: [(_) => AppInfo.author, (l) => l.hubAboutBilibili, (l) => l.hubAboutX, (l) => l.hubAboutGithub],
+  SettingsPageId.about: [
+    (_) => AppInfo.author,
+    (_) => AppInfo.author2,
+    (l) => l.hubAboutBilibili,
+    (l) => l.hubAboutX,
+    (l) => l.hubAboutGithub,
+  ],
   SettingsPageId.performance: [
     (l) => l.performanceAuto,
     (l) => l.performanceFull,
@@ -258,7 +264,7 @@ void main() {
 
   testWidgets('手机操控', (tester) async {
     await _check(tester, SettingsPageId.phone, () async {
-      await pumpPhone(tester, const PhoneControlScreen(), size: const Size(390, 3200));
+      await pumpPhone(tester, const PhoneControlScreen(), size: const Size(390, 4400));
     });
   });
 

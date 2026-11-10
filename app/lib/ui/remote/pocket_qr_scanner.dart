@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -26,6 +28,17 @@ class _PocketQrScannerPageState extends State<PocketQrScannerPage> {
   final _controller = MobileScannerController(formats: const [BarcodeFormat.qrCode]);
   bool _done = false;
   String? _lastRejected;
+  late final Future<void> _initialization;
+
+  @override
+  void initState() {
+    super.initState();
+    // Android disables ML Kit's eager provider for OCR privacy. Both the camera
+    // and photo decoder need the shared SDK before mobile_scanner uses it.
+    _initialization = !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+        ? const MethodChannel('dsh/app').invokeMethod<void>('initializePairingScanner')
+        : Future<void>.value();
+  }
 
   @override
   void dispose() {
@@ -60,9 +73,12 @@ class _PocketQrScannerPageState extends State<PocketQrScannerPage> {
     if (image == null || !mounted) return;
     BarcodeCapture? capture;
     try {
+      await _initialization;
+      if (!mounted) return;
       capture = await _controller.analyzeImage(image.path, formats: const [BarcodeFormat.qrCode]);
     } catch (_) {
-      capture = null;
+      if (mounted) messenger?.showSnackBar(SnackBar(content: Text(l10n.remotePairScannerFailed)));
+      return;
     }
     if (!mounted) return;
     if (capture == null || capture.barcodes.isEmpty) {
@@ -85,7 +101,23 @@ class _PocketQrScannerPageState extends State<PocketQrScannerPage> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          MobileScanner(controller: _controller, onDetect: (capture) => _take(capture.barcodes)),
+          FutureBuilder<void>(
+            future: _initialization,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(l10n.remotePairScannerFailed, textAlign: TextAlign.center),
+                  ),
+                );
+              }
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return MobileScanner(controller: _controller, onDetect: (capture) => _take(capture.barcodes));
+            },
+          ),
           Center(
             child: Container(
               width: 240,

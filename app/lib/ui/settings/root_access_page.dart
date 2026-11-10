@@ -55,13 +55,13 @@ class _RootAccessPageState extends ConsumerState<RootAccessPage> {
     final su = ref.watch(rootSuAvailableProvider).value;
     final enabled = _enabled ?? false;
     return AppPage.list(
-      title: l10n.rootAccessTitle,
+      title: l10n.hubRootAccess,
       children: [
         SettingsSection(
           children: [
             SettingsSwitchTile(
               key: const ValueKey('root-access-toggle'),
-              title: l10n.hubRootAccess,
+              title: l10n.rootAccessTitle,
               subtitle: su == null ? null : (su ? l10n.rootAccessSuOk : l10n.rootAccessSuMissing),
               value: enabled,
               onChanged: _enabled == null || _busy || su == false ? null : _toggle,
