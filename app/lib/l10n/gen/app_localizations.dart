@@ -25097,7 +25097,7 @@ abstract class L10n {
   /// No description provided for @pocketHosts.
   ///
   /// In zh, this message translates to:
-  /// **'DSH Pocket 主机'**
+  /// **'DSH Pocket / Remote'**
   String get pocketHosts;
 
   /// No description provided for @pocketHostsFooter.
@@ -25111,6 +25111,12 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'添加 Pocket 主机'**
   String get pocketAddHost;
+
+  /// No description provided for @pocketAddHostScan.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加 Pocket 主机（点击扫一扫）'**
+  String get pocketAddHostScan;
 
   /// No description provided for @pocketAddHostHint.
   ///

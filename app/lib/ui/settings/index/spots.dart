@@ -993,7 +993,7 @@ abstract final class Spots {
   static final pocketAddHost = SettingSpot(
     'add-pocket-host',
     page: SettingsPageId.remote,
-    title: (l) => l.pocketAddHost,
+    title: (l) => l.pocketAddHostScan,
     keywords: (l) => l.searchKwPocketAddHost,
   );
   static final remoteAutoConnect = SettingSpot(

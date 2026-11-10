@@ -13729,13 +13729,16 @@ class L10nZh extends L10n {
   String get pocketHost => 'Pocket 主机';
 
   @override
-  String get pocketHosts => 'DSH Pocket 主机';
+  String get pocketHosts => 'DSH Pocket / Remote';
 
   @override
   String get pocketHostsFooter => '电脑装好 dsh-pocket 插件即可。局域网 / Tailscale / 公网自动切换，连上任一条就同步另外两条的地址和密码。';
 
   @override
   String get pocketAddHost => '添加 Pocket 主机';
+
+  @override
+  String get pocketAddHostScan => '添加 Pocket 主机（点击扫一扫）';
 
   @override
   String get pocketAddHostHint => '扫电脑上 DSH 设置页的手机访问二维码';

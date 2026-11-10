@@ -1,8 +1,9 @@
 {
   "pocketHost": "Pocket 主机",
-  "pocketHosts": "DSH Pocket 主机",
+  "pocketHosts": "DSH Pocket / Remote",
   "pocketHostsFooter": "电脑装好 dsh-pocket 插件即可。局域网 / Tailscale / 公网自动切换，连上任一条就同步另外两条的地址和密码。",
   "pocketAddHost": "添加 Pocket 主机",
+  "pocketAddHostScan": "添加 Pocket 主机（点击扫一扫）",
   "pocketAddHostHint": "扫电脑上 DSH 设置页的手机访问二维码",
   "pocketEditHost": "编辑 Pocket 主机",
   "pocketHostIntro": "扫一张二维码（局域网、Tailscale 或公网都行），其余入口会在连上后自动补齐。",

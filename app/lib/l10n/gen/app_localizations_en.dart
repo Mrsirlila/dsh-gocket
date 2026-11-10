@@ -14419,7 +14419,7 @@ class L10nEn extends L10n {
   String get pocketHost => 'Pocket host';
 
   @override
-  String get pocketHosts => 'DSH Pocket hosts';
+  String get pocketHosts => 'DSH Pocket / Remote';
 
   @override
   String get pocketHostsFooter =>
@@ -14427,6 +14427,9 @@ class L10nEn extends L10n {
 
   @override
   String get pocketAddHost => 'Add Pocket host';
+
+  @override
+  String get pocketAddHostScan => 'Add Pocket host (tap to scan)';
 
   @override
   String get pocketAddHostHint => 'Scan the phone-access QR code in DSH settings on the computer';

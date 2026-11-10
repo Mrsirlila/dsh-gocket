@@ -12,6 +12,7 @@ import '../../state/app_info.dart';
 import '../../state/connection_state.dart';
 import '../../state/hosts_state.dart';
 import '../common/app_dialog.dart';
+import '../common/app_sheet.dart';
 import '../common/ask_ai.dart';
 import '../common/overview_card.dart';
 import '../common/status_chip.dart';
@@ -113,7 +114,26 @@ class RemoteScreen extends ConsumerWidget {
       actions: const [AskAiButton(AskAiTopic.remote)],
       children: [
         _ActiveCard(active: active),
-        _RelaySection(onUse: (h) => _use(context, ref, h)),
+        _HostsSection(
+          onUse: (h) => _use(context, ref, h),
+          pocket: [
+            for (final h in pocket)
+              _PocketRow(
+                config: h,
+                active: active == HostRef.pocket(h.id),
+                onTap: () => _use(context, ref, HostRef.pocket(h.id)),
+                onEdit: () => push(PocketHostFormPage(existing: h)),
+              ),
+            SettingsTile(
+              icon: AppIcons.qrCode,
+              tinted: false,
+              spot: Spots.pocketAddHost,
+              title: l10n.pocketAddHostScan,
+              subtitle: pocket.isEmpty ? l10n.pocketAddHostHint : null,
+              onTap: () => unawaited(_addPocket(context, ref)),
+            ),
+          ],
+        ),
         SettingsSection(
           title: l10n.remoteTransferSettings,
           children: [
@@ -143,27 +163,6 @@ class RemoteScreen extends ConsumerWidget {
               spot: Spots.addSshHost,
               subtitle: ssh.isEmpty ? l10n.remoteSshDirect : null,
               onTap: () => unawaited(_addSsh(context, ref)),
-            ),
-          ],
-        ),
-        SettingsSection(
-          title: l10n.pocketHosts,
-          footer: Text(l10n.pocketHostsFooter),
-          children: [
-            for (final h in pocket)
-              _PocketRow(
-                config: h,
-                active: active == HostRef.pocket(h.id),
-                onTap: () => _use(context, ref, HostRef.pocket(h.id)),
-                onEdit: () => push(PocketHostFormPage(existing: h)),
-              ),
-            SettingsTile(
-              icon: AppIcons.qrCode,
-              tinted: false,
-              spot: Spots.pocketAddHost,
-              title: l10n.pocketAddHost,
-              subtitle: pocket.isEmpty ? l10n.pocketAddHostHint : null,
-              onTap: () => unawaited(_addPocket(context, ref)),
             ),
           ],
         ),
@@ -448,41 +447,57 @@ class _PocketRow extends ConsumerWidget {
 
 // ── DSH Remote account ───────────────────────────────────────────────────────
 
-class _RelaySection extends ConsumerWidget {
-  const _RelaySection({required this.onUse});
+/// DSH Pocket and DSH Remote in one group, Pocket first: its hosts and the
+/// add-by-QR row, then the Remote account (signed out: one row that opens the
+/// sign-in sheet).
+class _HostsSection extends ConsumerWidget {
+  const _HostsSection({required this.pocket, required this.onUse});
 
+  final List<Widget> pocket;
   final ValueChanged<HostRef> onUse;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final async = ref.watch(relayAccountProvider);
-    final account = async.value ?? const RelayAccountState();
+    final account = ref.watch(relayAccountProvider).value ?? const RelayAccountState();
     final active = ref.watch(activeHostProvider);
     final notifier = ref.read(relayAccountProvider.notifier);
 
     if (!account.signedIn) {
       // Known before the stored sign-in has been read.
       final available = ref.watch(relayBackendProvider).available;
-      final server = account.server;
       return SettingsSection(
-        title: 'DSH Remote',
-        // The credit's link takes taps in the margin below it, so it carries it.
-        margin: available ? RelayCredit.sectionMargin : kSettingsGroupMargin,
-        footer: available
-            ? RelayCredit(server: server.isEmpty || server == 'dsh.r2049.cn' ? null : server)
-            : Text(l10n.remoteUnavailable),
-        children: [_LoginCard(account: account, available: available, loading: async.isLoading && !async.hasValue)],
+        title: l10n.pocketHosts,
+        footer: Text(l10n.pocketHostsFooter),
+        children: [
+          ...pocket,
+          SettingsTile(
+            key: const ValueKey('remote-relay-sign-in'),
+            icon: AppIcons.lock,
+            tinted: false,
+            title: l10n.remoteRelaySignInTitle,
+            subtitle: available ? l10n.remoteRelaySignInHelp : l10n.remoteUnavailable,
+            onTap: available ? () => unawaited(_showRelayLogin(context)) : null,
+          ),
+        ],
       );
     }
+    final relayFooter = account.hostsFailed && account.hosts.isNotEmpty
+        ? Text(l10n.remoteErrRefreshHosts, style: TextStyle(color: DshColors.of(context).danger))
+        : account.hosts.length > 1
+        ? Text(l10n.remoteSwitchWarning)
+        : null;
     return SettingsSection(
-      title: 'DSH Remote',
-      footer: account.hostsFailed && account.hosts.isNotEmpty
-          ? Text(l10n.remoteErrRefreshHosts, style: TextStyle(color: DshColors.of(context).danger))
-          : account.hosts.length > 1
-          ? Text(l10n.remoteSwitchWarning)
-          : null,
+      title: l10n.pocketHosts,
+      footer: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.pocketHostsFooter),
+          if (relayFooter != null) ...[const SizedBox(height: 4), relayFooter],
+        ],
+      ),
       children: [
+        ...pocket,
         SettingsTile(
           icon: AppIcons.account,
           tinted: false,
@@ -557,6 +572,43 @@ class _RelaySection extends ConsumerWidget {
       ),
     );
     if (ok == true) await notifier.logout();
+  }
+}
+
+Future<void> _showRelayLogin(BuildContext context) =>
+    showAppSheet<void>(context, isScrollControlled: true, builder: (_) => const _RelayLoginSheet());
+
+/// The DSH Remote sign-in, opened from the merged hosts group; closes itself
+/// once signed in.
+class _RelayLoginSheet extends ConsumerWidget {
+  const _RelayLoginSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(relayAccountProvider.select((a) => a.value?.signedIn ?? false), (_, signedIn) {
+      if (signedIn) Navigator.of(context).maybePop();
+    });
+    final async = ref.watch(relayAccountProvider);
+    final account = async.value ?? const RelayAccountState();
+    final available = ref.watch(relayBackendProvider).available;
+    final server = account.server;
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(top: 8, bottom: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _LoginCard(account: account, available: available, loading: async.isLoading && !async.hasValue),
+            if (available)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: SettingsMetrics.inset),
+                child: RelayCredit(server: server.isEmpty || server == 'dsh.r2049.cn' ? null : server),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

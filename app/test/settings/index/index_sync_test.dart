@@ -65,7 +65,8 @@ final Map<SettingsPageId, List<String Function(L10n)>> _unlisted = {
     (l) => l.performanceFollowMode,
   ],
   SettingsPageId.pets: [(l) => l.botsPetShowNow, (l) => l.botsPetSwitchDisabled, (l) => l.botsPetHiddenToday],
-  SettingsPageId.remote: [(l) => l.remoteWebConsole],
+  // The DSH Remote sign-in row opens the sign-in sheet; it is not a setting.
+  SettingsPageId.remote: [(l) => l.remoteWebConsole, (l) => l.remoteRelaySignInTitle],
 };
 
 /// Entries whose row shows the thing itself rather than the page's name
