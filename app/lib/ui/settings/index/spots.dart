@@ -1154,6 +1154,12 @@ abstract final class Spots {
     title: (l) => l.remoteAddSshHost,
     keywords: (l) => l.searchKwAddSshHost,
   );
+  static final pocketAddHost = SettingSpot(
+    'add-pocket-host',
+    page: SettingsPageId.remote,
+    title: (l) => l.pocketAddHostScan,
+    keywords: (l) => l.searchKwPocketAddHost,
+  );
   static final remoteAutoConnect = SettingSpot(
     'remote-auto-connect',
     page: SettingsPageId.remote,
@@ -1293,6 +1299,7 @@ final _rows = <SettingSpot>[
   Spots.engineReset,
   Spots.engineUninstall,
   Spots.addSshHost,
+  Spots.pocketAddHost,
   Spots.remoteAutoConnect,
   Spots.remoteCompactHistory,
   Spots.subagentDepth,

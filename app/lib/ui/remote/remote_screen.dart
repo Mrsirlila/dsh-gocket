@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../remote/pocket/pocket_link.dart' show pocketRouteLabel;
 import '../../remote/relay/relay_backend.dart';
 import '../../runtime/local_footprint.dart';
 import '../../runtime/runtime_state.dart';
@@ -25,6 +26,8 @@ import 'host_status.dart';
 import 'link_progress.dart';
 import 'network_details_sheet.dart';
 import 'pairing_page.dart';
+import 'pocket_host_form.dart';
+import 'pocket_qr_scanner.dart';
 import 'relay_credit.dart';
 import 'relay_login_sheet.dart';
 import 'ssh_host_form.dart';
@@ -84,10 +87,23 @@ class RemoteScreen extends ConsumerWidget {
     if (nothingHere && ref.read(activeHostProvider).isLocal) await _use(context, ref, HostRef.ssh(saved.id));
   }
 
+  /// Scan first, then the form with that entry filled in; saving connects.
+  Future<void> _addPocket(BuildContext context, WidgetRef ref) async {
+    final navigator = Navigator.of(context);
+    final scan = await PocketQrScannerPage.open(context);
+    if (!context.mounted) return;
+    final saved = await navigator.push<PocketHostConfig>(
+      MaterialPageRoute(builder: (_) => PocketHostFormPage(initialScan: scan)),
+    );
+    if (saved == null || !context.mounted) return;
+    await _use(context, ref, HostRef.pocket(saved.id));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final ssh = ref.watch(hostsProvider.select((s) => s.ssh));
+    final pocket = ref.watch(hostsProvider.select((s) => s.pocket));
     final active = ref.watch(activeHostProvider);
     final signedIn = ref.watch(relayAccountProvider.select((a) => a.value?.signedIn ?? false));
     void push(Widget page) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
@@ -127,6 +143,26 @@ class RemoteScreen extends ConsumerWidget {
               spot: Spots.addSshHost,
               subtitle: ssh.isEmpty ? l10n.remoteSshDirect : null,
               onTap: () => unawaited(_addSsh(context, ref)),
+            ),
+          ],
+        ),
+        SettingsSection(
+          title: l10n.pocketHosts,
+          footer: Text(l10n.pocketHostsFooter),
+          children: [
+            for (final h in pocket)
+              _PocketRow(
+                config: h,
+                active: active == HostRef.pocket(h.id),
+                onTap: () => _use(context, ref, HostRef.pocket(h.id)),
+                onEdit: () => push(PocketHostFormPage(existing: h)),
+              ),
+            SettingsTile(
+              icon: AppIcons.add,
+              tinted: false,
+              spot: Spots.pocketAddHost,
+              subtitle: pocket.isEmpty ? l10n.pocketAddHostHint : null,
+              onTap: () => unawaited(_addPocket(context, ref)),
             ),
           ],
         ),
@@ -388,6 +424,42 @@ class _SshRow extends ConsumerWidget {
 }
 
 // ── DSH Remote account ───────────────────────────────────────────────────────
+
+class _PocketRow extends ConsumerWidget {
+  const _PocketRow({required this.config, required this.active, required this.onTap, required this.onEdit});
+
+  final PocketHostConfig config;
+  final bool active;
+  final VoidCallback onTap;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final view = active ? watchHostStatus(ref, HostRef.pocket(config.id)) : null;
+    final routes = [
+      for (final r in PocketRoute.values)
+        if (config.urlOf(r) != null) pocketRouteLabel(r),
+    ].join(' · ');
+    return Semantics(
+      selected: active,
+      inMutuallyExclusiveGroup: true,
+      child: SettingsTile(
+        icon: hostKindIcon(HostKind.pocket),
+        tinted: false,
+        title: config.name,
+        subtitle: routes,
+        onTap: onTap,
+        value: view == null ? null : _HostState(view),
+        trailing: _EdgeIconButton(
+          icon: const Icon(AppIcons.configure, size: 20),
+          tooltip: l10n.commonEdit,
+          onPressed: onEdit,
+        ),
+      ),
+    );
+  }
+}
 
 class _RelaySection extends ConsumerWidget {
   const _RelaySection({required this.onUse});

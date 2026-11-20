@@ -126,7 +126,7 @@ class SettingsScreen extends ConsumerWidget {
     // 通用. HarmonyOS has no battery exemption to report.
     final exempt = android ? ref.watch(batteryExemptProvider).value : null;
     // 主机.
-    final ssh = ref.watch(hostsProvider.select((s) => s.ssh.length));
+    final ssh = ref.watch(hostsProvider.select((s) => s.ssh.length + s.pocket.length));
     final hostName = host.isLocal ? l10n.commonThisPhone : ref.watch(hostNameProvider(host)) ?? l10n.commonRemoteHost;
     // 帮助与关于.
     final update = ref.watch(appUpdateProvider);
