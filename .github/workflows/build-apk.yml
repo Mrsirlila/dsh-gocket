@@ -220,7 +220,10 @@ jobs:
           keytool -list -keystore "$ks" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | grep -i 'SHA-256'
 
       - name: Build the APK
-        run: tooling/build-apk.sh
+        # No upstream update mirror / feed: their manifests describe ccch1mneyyy's
+        # releases, and this fork publishes its own (see updateRepo in
+        # app/lib/update/update_config.dart). GitHub is the only update source.
+        run: tooling/build-apk.sh -- --dart-define=DSH_UPDATE_MIRROR= --dart-define=DSH_UPDATE_FEED=
 
       - name: Name the APK after its version
         id: apk
@@ -239,6 +242,22 @@ jobs:
             ${{ runner.temp }}/${{ steps.apk.outputs.name }}.sha256
           retention-days: 14
           if-no-files-found: error
+
+      # Without the ANDROID_KEYSTORE_* secrets the build falls back to a debug key:
+      # a published APK signed that way cannot be installed over, or update, a
+      # release-signed one, so refuse to publish it.
+      - name: Verify the release signature
+        if: inputs.publish == 'release'
+        run: |
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          out=$("$apksigner" verify -v --min-sdk-version 21 --print-certs \
+            app/build/app/outputs/flutter-apk/app-arm64-release.apk)
+          echo "$out" | grep -E '^Verified using v[123]'
+          echo "$out" | grep -E 'certificate DN'
+          if echo "$out" | grep -qi 'CN=Android Debug'; then
+            echo "::error::APK is debug-signed; set the ANDROID_KEYSTORE_* secrets"
+            exit 1
+          fi
 
       # Releases are what in-app updates read (releases/latest): the APK keeps the
       # name the app expects (dsh-go-<version>-arm64.apk), next to SHA256SUMS and
