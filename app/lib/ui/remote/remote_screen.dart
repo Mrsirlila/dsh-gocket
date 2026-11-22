@@ -115,7 +115,13 @@ class RemoteScreen extends ConsumerWidget {
       actions: const [AskAiButton(AskAiTopic.remote)],
       children: [
         _ActiveCard(active: active),
-        _RelaySection(onUse: (h) => _use(context, ref, h)),
+        _ConnectSection(
+          pocket: pocket,
+          active: active,
+          onUse: (h) => _use(context, ref, h),
+          onEditPocket: (h) => push(PocketHostFormPage(existing: h)),
+          onAddPocket: () => unawaited(_addPocket(context, ref)),
+        ),
         SettingsSection(
           title: l10n.remoteTransferSettings,
           children: [
@@ -145,26 +151,6 @@ class RemoteScreen extends ConsumerWidget {
               spot: Spots.addSshHost,
               subtitle: ssh.isEmpty ? l10n.remoteSshDirect : null,
               onTap: () => unawaited(_addSsh(context, ref)),
-            ),
-          ],
-        ),
-        SettingsSection(
-          title: l10n.pocketHosts,
-          footer: Text(l10n.pocketHostsFooter),
-          children: [
-            for (final h in pocket)
-              _PocketRow(
-                config: h,
-                active: active == HostRef.pocket(h.id),
-                onTap: () => _use(context, ref, HostRef.pocket(h.id)),
-                onEdit: () => push(PocketHostFormPage(existing: h)),
-              ),
-            SettingsTile(
-              icon: AppIcons.add,
-              tinted: false,
-              spot: Spots.pocketAddHost,
-              subtitle: pocket.isEmpty ? l10n.pocketAddHostHint : null,
-              onTap: () => unawaited(_addPocket(context, ref)),
             ),
           ],
         ),
@@ -473,41 +459,42 @@ class _PocketRow extends ConsumerWidget {
   }
 }
 
-class _RelaySection extends ConsumerWidget {
-  const _RelaySection({required this.onUse});
+/// The two ways to a computer, in one card: a DSH Remote account (the sign-in
+/// card, or that account's hosts once signed in) and DSH Pocket hosts (LAN /
+/// Tailscale / public), each followed by the row that adds another one.
+///
+/// They answer the same question — which computer to drive — and used to be
+/// two cards apart, so the list, the account and both "add" rows are here.
+class _ConnectSection extends ConsumerWidget {
+  const _ConnectSection({
+    required this.pocket,
+    required this.active,
+    required this.onUse,
+    required this.onEditPocket,
+    required this.onAddPocket,
+  });
 
+  final List<PocketHostConfig> pocket;
+  final HostRef active;
   final ValueChanged<HostRef> onUse;
+  final ValueChanged<PocketHostConfig> onEditPocket;
+  final VoidCallback onAddPocket;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final async = ref.watch(relayAccountProvider);
     final account = async.value ?? const RelayAccountState();
-    final active = ref.watch(activeHostProvider);
     final notifier = ref.read(relayAccountProvider.notifier);
+    // Known before the stored sign-in has been read.
+    final available = ref.watch(relayBackendProvider).available;
+    final pairing = ref.watch(relayPairingSupportProvider).value ?? false;
+    final signingIn = !account.signedIn;
 
-    if (!account.signedIn) {
-      // Known before the stored sign-in has been read.
-      final available = ref.watch(relayBackendProvider).available;
-      final server = account.server;
-      return SettingsSection(
-        title: 'DSH Remote',
-        // The credit's link takes taps in the margin below it, so it carries it.
-        margin: available ? RelayCredit.sectionMargin : kSettingsGroupMargin,
-        footer: available
-            ? RelayCredit(server: server.isEmpty || server == 'dsh.r2049.cn' ? null : server)
-            : Text(l10n.remoteUnavailable),
-        children: [_LoginCard(account: account, available: available, loading: async.isLoading && !async.hasValue)],
-      );
-    }
-    return SettingsSection(
-      title: 'DSH Remote',
-      footer: account.hostsFailed && account.hosts.isNotEmpty
-          ? Text(l10n.remoteErrRefreshHosts, style: TextStyle(color: DshColors.of(context).danger))
-          : account.hosts.length > 1
-          ? Text(l10n.remoteSwitchWarning)
-          : null,
-      children: [
+    final rows = <Widget>[
+      if (signingIn)
+        _LoginCard(account: account, available: available, loading: async.isLoading && !async.hasValue)
+      else ...[
         SettingsTile(
           icon: AppIcons.account,
           tinted: false,
@@ -549,7 +536,7 @@ class _RelaySection extends ConsumerWidget {
               active: active == HostRef.relay(h.id),
               onTap: h.online || active == HostRef.relay(h.id) ? () => onUse(HostRef.relay(h.id, name: h.name)) : null,
             ),
-        if (ref.watch(relayPairingSupportProvider).value ?? false)
+        if (pairing)
           SettingsTile(
             icon: AppIcons.qrCode,
             tinted: false,
@@ -557,6 +544,44 @@ class _RelaySection extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(RemotePairingPage.route()),
           ),
       ],
+      for (final h in pocket)
+        _PocketRow(
+          config: h,
+          active: active == HostRef.pocket(h.id),
+          onTap: () => onUse(HostRef.pocket(h.id)),
+          onEdit: () => onEditPocket(h),
+        ),
+      SettingsTile(
+        icon: AppIcons.add,
+        tinted: false,
+        spot: Spots.pocketAddHost,
+        subtitle: pocket.isEmpty ? l10n.pocketAddHostHint : null,
+        onTap: onAddPocket,
+      ),
+    ];
+
+    return SettingsSection(
+      title: l10n.pocketHosts,
+      // The credit's link takes taps in the margin below it, so it carries it
+      // (the sign-in card is what draws that link).
+      margin: signingIn && available ? RelayCredit.sectionMargin : kSettingsGroupMargin,
+      footer: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (signingIn)
+            available
+                ? RelayCredit(server: account.server.isEmpty || account.server == 'dsh.r2049.cn' ? null : account.server)
+                : Text(l10n.remoteUnavailable),
+          if (!signingIn && account.hostsFailed && account.hosts.isNotEmpty)
+            Text(l10n.remoteErrRefreshHosts, style: TextStyle(color: DshColors.of(context).danger)),
+          if (!signingIn && !account.hostsFailed && account.hosts.length > 1)
+            Text(l10n.remoteSwitchWarning),
+          if (signingIn) const SizedBox(height: 6),
+          Text(l10n.pocketHostsFooter),
+        ],
+      ),
+      children: rows,
     );
   }
 
