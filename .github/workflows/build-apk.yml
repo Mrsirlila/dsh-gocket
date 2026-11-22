@@ -27,9 +27,22 @@ on:
         type: choice
         options: [official, china]
         default: official
+      publish:
+        description: Publish a GitHub Release (in-app updates read releases/latest)
+        type: choice
+        options: [none, release]
+        default: none
+      tag:
+        description: Release tag (empty = v + the version name in app/pubspec.yaml)
+        type: string
+        default: ''
+      notes:
+        description: Release notes (Markdown, shown in the app's update dialog; empty = a one-liner)
+        type: string
+        default: ''
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: build-apk-${{ github.ref }}
@@ -214,7 +227,7 @@ jobs:
         run: |
           version=$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' app/pubspec.yaml)
           name="dsh-go-${version}-${GITHUB_SHA::7}-arm64.apk"
-          mv app/build/app/outputs/flutter-apk/app-arm64-release.apk "$RUNNER_TEMP/$name"
+          cp app/build/app/outputs/flutter-apk/app-arm64-release.apk "$RUNNER_TEMP/$name"
           sha256sum "$RUNNER_TEMP/$name" | tee "$RUNNER_TEMP/$name.sha256"
           echo "name=$name" >> "$GITHUB_OUTPUT"
 
@@ -226,3 +239,39 @@ jobs:
             ${{ runner.temp }}/${{ steps.apk.outputs.name }}.sha256
           retention-days: 14
           if-no-files-found: error
+
+      # Releases are what in-app updates read (releases/latest): the APK keeps the
+      # name the app expects (dsh-go-<version>-arm64.apk), next to SHA256SUMS and
+      # update.json, and the release must not be a prerelease or `latest` skips it.
+      - name: Build the release assets
+        if: inputs.publish == 'release'
+        run: |
+          version=$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' app/pubspec.yaml)
+          notes="$RUNNER_TEMP/notes.md"
+          if [ -n "${{ inputs.notes }}" ]; then
+            printf '%s\n' "${{ inputs.notes }}" > "$notes"
+          else
+            printf 'DSH Go %s（dsh-gocket）：合并上游之后重新构建，含 Pocket 主机等功能。\n' "$version" > "$notes"
+          fi
+          python3 tooling/release_assets.py --notes "$notes" --delta-from 0
+          ls -l dist/
+
+      - name: Publish the GitHub release
+        if: inputs.publish == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' app/pubspec.yaml)
+          tag="${{ inputs.tag }}"
+          [ -n "$tag" ] || tag="v$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/* --clobber
+          else
+            gh release create "$tag" dist/* \
+              --title "DSH Go $version（dsh-gocket）" \
+              --notes-file "$RUNNER_TEMP/notes.md" \
+              --latest
+          fi
+          gh release view "$tag" --json tagName,isPrerelease,assets \
+            --jq '{tag:.tagName, prerelease:.isPrerelease, assets:[.assets[].name]}'
+          echo "下载页: https://github.com/${{ github.repository }}/releases/latest"
