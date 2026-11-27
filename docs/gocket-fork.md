@@ -10,7 +10,7 @@
 | --- | --- |
 | origin | `https://github.com/Mrsirlila/dsh-gocket` |
 | upstream | `https://github.com/ccch1mneyyy/dsh-Go` |
-| 分支 | `gocket`（交付分支，`main` 是上游镜像，不要直接在上面改） |
+| 分支 | `gocket`（交付分支**兼默认分支**；`main` 只是上游镜像，不要直接在上面改） |
 | 更新源 | `app/lib/update/update_config.dart` 的 `const updateRepo = 'Mrsirlila/dsh-gocket';` |
 
 ### 版本号规则
@@ -150,7 +150,20 @@ call ... flutter.bat build apk --release --flavor arm64 --target-platform androi
 
 ### 发布
 
-`.github/workflows/build-apk.yml` 的 `workflow_dispatch` 有 `publish=release`：会先用 `apksigner` 校验不是 debug 签名，再用 `tooling/release_assets.py` 生成 `dsh-go-<ver>-arm64.apk` + `SHA256SUMS` + `update.json`，最后 `gh release create`。发版前记得把 workflow 提交到默认分支，否则 Actions 里点不到。
+客户下载地址永远是 `https://github.com/Mrsirlila/dsh-gocket/releases/latest/download/dsh-go-<ver>-arm64.apk`，App 内的「检查更新」也读同一个 Release（`updateRepo = 'Mrsirlila/dsh-gocket'`），所以每次发版必须三件套齐全：`dsh-go-<ver>-arm64.apk`、`SHA256SUMS`、`update.json`。
+
+**默认分支是 `gocket`**（`main` 只作为上游镜像，不要去改）。这样 Actions 里能点到 `Build APK`，它的 `workflow_dispatch` 有 `publish=release`：会先用 `apksigner` 校验不是 debug 签名，再生成三件套，最后 `gh release create`。
+
+⚠ `runtime=upstream` 在这棵树上**会失败**：上游 1.4.1 的 release APK 里 `manifest.json` 缺 `runtime/build-runtime.sh` 里 pin 的 38 个 `ohos-*.diff`，CI 报 `upstream runtime does not match this tree (engine patches missing: …)`。要跳过就用 `runtime=build`（自己构建 runtime，慢），或者干脆在本机发版：
+
+```
+# 1) 构建（build-gocket-<ver>.bat，见上一节）
+# 2) 发版：生成三件套 + 打 tag + 建 Release + 上传（幂等，可重跑）
+powershell -ExecutionPolicy Bypass -File D:\android-build\release-gocket.ps1 -Version 1.4.6 -NotesFile D:\android-build\notes-146.md
+```
+
+`release-gocket.ps1` 会先核对 `app/pubspec.yaml` 的版本号，对不上直接退出；重复跑同一个版本会覆盖旧资产。它用 `git credential` 里的 PAT，需要 `py` 与 `curl` 在 PATH。
+
 
 ## 测试的已知噪声（不是回归）
 
