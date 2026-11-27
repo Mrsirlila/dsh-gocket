@@ -223,7 +223,9 @@ jobs:
         # No upstream update mirror / feed: their manifests describe ccch1mneyyy's
         # releases, and this fork publishes its own (see updateRepo in
         # app/lib/update/update_config.dart). GitHub is the only update source.
-        run: tooling/build-apk.sh -- --dart-define=DSH_UPDATE_MIRROR= --dart-define=DSH_UPDATE_FEED=
+        # --no-companion: the licensed companion pack never enters this repository
+        # (see docs/gocket-fork.md), so releases ship without it.
+        run: tooling/build-apk.sh --no-companion -- --dart-define=DSH_UPDATE_MIRROR= --dart-define=DSH_UPDATE_FEED=
 
       - name: Name the APK after its version
         id: apk
