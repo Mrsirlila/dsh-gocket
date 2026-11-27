@@ -144,7 +144,7 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets('the signed-in account sits on top, on its own, above its hosts', (tester) async {
+  testWidgets('the signed-in account sits at the top of the connect card, above its hosts', (tester) async {
     await pump(tester, const RemoteScreen());
     await frames(tester, 3);
     final account = find.byKey(const ValueKey('remote-account'));
