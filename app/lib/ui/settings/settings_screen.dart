@@ -114,7 +114,7 @@ class SettingsScreen extends ConsumerWidget {
         ? null
         : !phone.status.enabled
         ? l10n.hubValueOff
-        : (ios ? phone.status.bridgeListening : phone.status.a11y.ok)
+        : (ios ? phone.status.bridgeListening : (phone.status.a11y.ok || phone.status.rootAvailable))
         ? l10n.pluginsTurnedOn
         : l10n.hubValueOneStep;
     final plugins = ref.watch(installedPluginsProvider.select((s) => s.value?.length));
@@ -189,6 +189,24 @@ class SettingsScreen extends ConsumerWidget {
                   ref.watch(systemActionsProvider.select((s) => s.enabled)) ? l10n.pluginsTurnedOn : l10n.hubValueOff,
                 ),
                 onTap: () => _push(context, const SystemActionsPage()),
+              ),
+            // Root is the switch people should see without opening the page: a
+            // rooted phone reads the screen through su, not the service.
+            if (android && phone != null && phone.loaded && phone.status.ready)
+              SettingsTile(
+                icon: AppIcons.unlock,
+                tint: SettingsHues.abilities,
+                title: l10n.phoneRootTitle,
+                subtitle: phone.status.rootSu ? null : l10n.phoneRootNoSu,
+                trailing: Switch.adaptive(
+                  value: phone.status.rootEnabled,
+                  onChanged: phone.status.rootSu
+                      ? (on) async {
+                          await ref.read(phoneChannelProvider).setRootEnabled(on);
+                          await ref.read(phoneProvider.notifier).refreshStatus();
+                        }
+                      : null,
+                ),
               ),
             SettingsTile(
               icon: AppIcons.webSearch,

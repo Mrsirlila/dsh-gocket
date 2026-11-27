@@ -294,6 +294,7 @@ class PhonePlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandle
                 }
             }
             "openAccessibilitySettings" -> result.success(startActivity(control.accessibilitySettingsIntent()))
+            "setRootEnabled" -> async(result) { control.setRootEnabled(call.argument<Boolean>("enabled") == true) }
             "openAppDetails" -> result.success(startActivity(control.appDetailsIntent()))
             "testScreen" -> async(result) { control.testScreen() }
             "setBackgroundMode" -> {

@@ -14199,6 +14199,18 @@ class L10nEn extends L10n {
   String get phoneControlAccessibilityHint => 'Needed to read the screen and tap';
 
   @override
+  String get phoneRootTitle => 'Root access';
+
+  @override
+  String get phoneRootOn => 'On: reads the screen and taps through su, no accessibility';
+
+  @override
+  String get phoneRootOff => 'Off: only the accessibility service can read the screen';
+
+  @override
+  String get phoneRootNoSu => 'No su on this phone, so root is unavailable';
+
+  @override
   String get phoneControlRootReady => 'Reading the screen with root, no accessibility';
 
   @override

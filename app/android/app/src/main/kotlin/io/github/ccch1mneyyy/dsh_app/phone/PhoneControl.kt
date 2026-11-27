@@ -400,6 +400,18 @@ class PhoneControl private constructor(private val app: Context) : PhoneEnv, Con
         return true
     }
 
+    // ── Root ────────────────────────────────────────────────────────────────────────
+
+    /** On by default: a rooted phone reads the screen through su instead of the service. */
+    fun rootEnabled(): Boolean = prefs.getBoolean(K_ROOT, true)
+
+    /** The switch behind the root row; the driver and the status both read it. */
+    fun setRootEnabled(enabled: Boolean): Map<String, Any?> {
+        prefs.edit().putBoolean(K_ROOT, enabled).apply()
+        emitStatus()
+        return mapOf("ok" to true, "enabled" to enabled)
+    }
+
     override fun policies(): PhonePolicies = policiesCache
 
     /** Construction only, before any registry/worker can read the published cache. */
@@ -934,7 +946,11 @@ class PhoneControl private constructor(private val app: Context) : PhoneEnv, Con
             "enabled" to isEnabled(),
             "bridgeListening" to bridge.listening,
             "a11y" to linkedMapOf("enabled" to a11yEnabledInSettings(), "serviceConnected" to (PhoneRegistry.mainDriver != null)),
-            "root" to linkedMapOf("available" to rootScreen.available()),
+            "root" to linkedMapOf(
+                "enabled" to rootEnabled(),
+                "su" to rootScreen.available(),
+                "available" to (rootEnabled() && rootScreen.available()),
+            ),
             "overlay" to (PhoneRegistry.overlayGate != null),
             "notifications" to nm.areNotificationsEnabled(),
             "confirmationNotifications" to notificationGate.available(),
@@ -1111,9 +1127,9 @@ class PhoneControl private constructor(private val app: Context) : PhoneEnv, Con
             val until = SystemClock.elapsedRealtime() + KEEPER_WAIT_MS
             while (PhoneRegistry.mainDriver == null && SystemClock.elapsedRealtime() < until) Thread.sleep(100)
         }
-        // No accessibility service: root drives the main screen on its own. Its availability
-        // carries the reason when there is no su at all, which beats "无障碍没开" for a root user.
-        if (screen != PhoneScreen.BACKGROUND) return PhoneRegistry.mainDriver ?: rootScreen
+        // No accessibility service: root drives the main screen on its own, unless the person
+        // turned root off. Its availability carries the reason when there is no su at all.
+        if (screen != PhoneScreen.BACKGROUND) return PhoneRegistry.mainDriver ?: rootScreen.takeIf { rootEnabled() }
         return runCatching {
             background.driverForTask(owner, { task.isCurrent(owner) }) { commit ->
                 task.runIfCurrent(owner, commit)
@@ -1171,6 +1187,7 @@ class PhoneControl private constructor(private val app: Context) : PhoneEnv, Con
         const val SERVER_VERSION = "1"
         private const val PREFS = "dsh_phone"
         private const val K_ENABLED = "enabled"
+        private const val K_ROOT = "rootEnabled"
         private const val K_LEARN_SKILLS = "learnPhoneSkills"
         private const val K_SKILL_PROMPT = "skillSavePrompt"
 

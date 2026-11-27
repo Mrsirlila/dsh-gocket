@@ -25122,6 +25122,30 @@ abstract class L10n {
   /// **'看屏幕和点按都靠它'**
   String get phoneControlAccessibilityHint;
 
+  /// No description provided for @phoneRootTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'Root 权限'**
+  String get phoneRootTitle;
+
+  /// No description provided for @phoneRootOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'开着：读屏和点按走 su，不用无障碍'**
+  String get phoneRootOn;
+
+  /// No description provided for @phoneRootOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'已关闭：读屏只能用无障碍服务'**
+  String get phoneRootOff;
+
+  /// No description provided for @phoneRootNoSu.
+  ///
+  /// In zh, this message translates to:
+  /// **'这台手机没有 su，root 用不了'**
+  String get phoneRootNoSu;
+
   /// No description provided for @phoneControlRootReady.
   ///
   /// In zh, this message translates to:

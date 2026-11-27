@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -483,6 +484,12 @@ class _PhoneControlScreenState extends ConsumerState<PhoneControlScreen> {
         if (!state.loaded)
           const QuietSpinner(padding: EdgeInsets.symmetric(vertical: 32))
         else if (ready) ...[
+          // Root sits at the top, before the master switch's own steps: it is a way to read
+          // the screen on its own, and the switch must be reachable even with 手机操控 off.
+          if (defaultTargetPlatform == TargetPlatform.android) ...[
+            ListPageCard(children: [RootSwitchRow(status: status)]),
+            gap,
+          ],
           if (status.enabled) ..._setup(status) else const _WhatItDoes(),
           gap,
           ..._rules(state),
@@ -950,6 +957,55 @@ class _PhoneControlScreenState extends ConsumerState<PhoneControlScreen> {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// 设置 → 手机操控: the root switch, so the option is visible instead of hidden in a backend
+/// picker. Off means the accessibility service is the only way to read the screen.
+class RootSwitchRow extends ConsumerStatefulWidget {
+  const RootSwitchRow({super.key, required this.status});
+
+  final PhoneStatus status;
+
+  @override
+  ConsumerState<RootSwitchRow> createState() => _RootSwitchRowState();
+}
+
+class _RootSwitchRowState extends ConsumerState<RootSwitchRow> {
+  bool _busy = false;
+
+  Future<void> _set(bool on) async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(phoneChannelProvider).setRootEnabled(on);
+      await ref.read(phoneProvider.notifier).refreshStatus();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final status = widget.status;
+    final su = status.rootSu;
+    return MergeSemantics(
+      child: ListPageRow(
+        icon: AppIcons.unlock,
+        title: l10n.phoneRootTitle,
+        subtitle: !su
+            ? l10n.phoneRootNoSu
+            : status.rootEnabled
+            ? l10n.phoneRootOn
+            : l10n.phoneRootOff,
+        subtitleMaxLines: 3,
+        onTap: !su || _busy ? null : () => unawaited(_set(!status.rootEnabled)),
+        trailing: Switch.adaptive(
+          value: status.rootEnabled,
+          onChanged: !su || _busy ? null : (value) => unawaited(_set(value)),
+        ),
+      ),
     );
   }
 }

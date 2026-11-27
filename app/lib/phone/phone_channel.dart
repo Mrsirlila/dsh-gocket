@@ -592,7 +592,9 @@ class PhoneStatus {
     this.enabled = false,
     this.bridgeListening = false,
     this.a11y = const PhoneA11yStatus(),
+    this.rootEnabled = false,
     this.rootAvailable = false,
+    this.rootSu = false,
     this.a11yKeeper = const A11yKeeperStatus(),
     this.overlay = false,
     this.notifications = false,
@@ -615,7 +617,9 @@ class PhoneStatus {
       enabled = false,
       bridgeListening = false,
       a11y = const PhoneA11yStatus(),
+      rootEnabled = false,
       rootAvailable = false,
+      rootSu = false,
       a11yKeeper = const A11yKeeperStatus(),
       overlay = false,
       notifications = false,
@@ -636,7 +640,9 @@ class PhoneStatus {
     enabled: _flag(m['enabled']),
     bridgeListening: _flag(m['bridgeListening']),
     a11y: PhoneA11yStatus.fromMap(_map(m['a11y'])),
+    rootEnabled: _flag(_map(m['root'])['enabled']),
     rootAvailable: _flag(_map(m['root'])['available']),
+    rootSu: _flag(_map(m['root'])['su']),
     a11yKeeper: A11yKeeperStatus.fromMap(_map(m['a11yKeeper'])),
     overlay: _flag(m['overlay']),
     notifications: _flag(m['notifications']),
@@ -667,8 +673,14 @@ class PhoneStatus {
   final bool bridgeListening;
   final PhoneA11yStatus a11y;
 
-  /// su is there, so the main screen no longer needs the accessibility service.
+  /// The root switch in 手机操控; on by default, so a rooted phone needs no service.
+  final bool rootEnabled;
+
+  /// The switch is on and su is there: the main screen needs no accessibility service.
   final bool rootAvailable;
+
+  /// su answered at all, whichever way the switch is set.
+  final bool rootSu;
   final A11yKeeperStatus a11yKeeper;
   final bool overlay;
 
@@ -699,7 +711,9 @@ class PhoneStatus {
     enabled: enabled ?? this.enabled,
     bridgeListening: bridgeListening,
     a11y: a11y,
+    rootEnabled: rootEnabled,
     rootAvailable: rootAvailable,
+    rootSu: rootSu,
     a11yKeeper: a11yKeeper,
     overlay: overlay,
     notifications: notifications,
@@ -1333,6 +1347,9 @@ class PhoneChannel {
   }
 
   Future<bool> setEnabled(bool enabled) => _bool('setEnabled', {'enabled': enabled});
+
+  /// 手机操控 → Root 开关: reads the screen through su instead of the accessibility service.
+  Future<PhoneResult> setRootEnabled(bool enabled) => _result('setRootEnabled', {'enabled': enabled});
 
   /// Her full-mode sessions on this phone's engine, replacing the last set.
   /// Native lets exactly these operate the phone with the switch off.

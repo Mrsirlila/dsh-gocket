@@ -252,7 +252,7 @@ void main() {
   group('准备', () {
     testWidgets('accessibility: opens settings, detects on resume, else points at restricted settings', (tester) async {
       final h = await pumpPhone(tester, const PhoneControlScreen());
-      expect(find.text('还差一步：打开无障碍'), findsOneWidget);
+      expect(find.text('还差一步：打开无障碍或给 root'), findsOneWidget);
       // vivo, Android 15, sideloaded: the hint is there from the start.
       expect(find.text('无障碍开关点不动？'), findsOneWidget);
       expect(find.text('侧载安装的 App 要先「允许受限制的设置」'), findsOneWidget);

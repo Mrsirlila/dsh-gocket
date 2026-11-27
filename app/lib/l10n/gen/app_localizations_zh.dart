@@ -13466,6 +13466,18 @@ class L10nZh extends L10n {
   String get phoneControlAccessibilityHint => '看屏幕和点按都靠它';
 
   @override
+  String get phoneRootTitle => 'Root 权限';
+
+  @override
+  String get phoneRootOn => '开着：读屏和点按走 su，不用无障碍';
+
+  @override
+  String get phoneRootOff => '已关闭：读屏只能用无障碍服务';
+
+  @override
+  String get phoneRootNoSu => '这台手机没有 su，root 用不了';
+
+  @override
   String get phoneControlRootReady => '用 root 读屏，不需要无障碍';
 
   @override
