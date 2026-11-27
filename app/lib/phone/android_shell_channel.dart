@@ -9,11 +9,13 @@ int? _nonNegativeInt(Object? value) => value is int && value >= 0 ? value : null
 
 enum AndroidShellBackend {
   shizuku,
-  adb;
+  adb,
+  root;
 
   static AndroidShellBackend? parse(Object? value) => switch (value) {
     'shizuku' => shizuku,
     'adb' => adb,
+    'root' => root,
     _ => null,
   };
 }
@@ -42,6 +44,17 @@ class AndroidShellAdbStatus {
   final bool connected;
 }
 
+/// `su` on this phone. The root manager asks once, when the channel is connected.
+class AndroidShellRootStatus {
+  const AndroidShellRootStatus({this.available = false, this.connected = false});
+
+  factory AndroidShellRootStatus.fromMap(Map<Object?, Object?> value) =>
+      AndroidShellRootStatus(available: value['available'] == true, connected: value['connected'] == true);
+
+  final bool available;
+  final bool connected;
+}
+
 /// Independent of the screen-control/background-display status and permissions.
 class AndroidShellStatus {
   const AndroidShellStatus({
@@ -53,6 +66,7 @@ class AndroidShellStatus {
     this.reasonCode,
     this.shizuku = const AndroidShellShizukuStatus(),
     this.adb = const AndroidShellAdbStatus(),
+    this.root = const AndroidShellRootStatus(),
     this.limits = const {},
   });
 
@@ -76,6 +90,7 @@ class AndroidShellStatus {
       reasonCode: _code(value['reasonCode']),
       shizuku: AndroidShellShizukuStatus.fromMap(_map(value['shizuku'])),
       adb: AndroidShellAdbStatus.fromMap(_map(value['adb'])),
+      root: AndroidShellRootStatus.fromMap(_map(value['root'])),
       limits: Map.unmodifiable({
         for (final key in const ['defaultTimeoutMs', 'maxTimeoutMs', 'maxOutputBytes', 'maxCommandBytes'])
           key: ?_nonNegativeInt(limits[key]),
@@ -91,6 +106,7 @@ class AndroidShellStatus {
   final String? reasonCode;
   final AndroidShellShizukuStatus shizuku;
   final AndroidShellAdbStatus adb;
+  final AndroidShellRootStatus root;
   final Map<String, int> limits;
 }
 

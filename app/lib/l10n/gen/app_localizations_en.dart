@@ -1929,6 +1929,24 @@ class L10nEn extends L10n {
       'The outcome could not be confirmed. Verify it first; never automatically retry a dispatched command.';
 
   @override
+  String get androidShellRootName => 'Root';
+
+  @override
+  String get androidShellRootHint =>
+      'The phone is already rooted (Magisk, KernelSU or APatch). Press Connect: your root manager asks once, then this channel runs commands as root — no Shizuku, no wireless debugging, no accessibility service.';
+
+  @override
+  String get androidShellRootAvailable => 'su found';
+
+  @override
+  String get androidShellErrorRootMissing =>
+      'No su was found on this phone. Root it first (Magisk / KernelSU / APatch), or re-enable su in your root manager.';
+
+  @override
+  String get androidShellErrorRootDenied =>
+      'Root access was denied. Allow dsh-Go in your root manager, then press Connect again.';
+
+  @override
   String get androidBackgroundProtectionTitle => 'Enhanced background protection';
 
   @override
@@ -17976,7 +17994,10 @@ class L10nEn extends L10n {
   String get pocketHost => 'Pocket host';
 
   @override
-  String get pocketHosts => 'DSH Pocket / Remote';
+  String get pocketHosts => 'DSH Pocket';
+
+  @override
+  String get pocketRemoteRelay => 'Other ways: DSH Remote';
 
   @override
   String get pocketHostsFooter =>

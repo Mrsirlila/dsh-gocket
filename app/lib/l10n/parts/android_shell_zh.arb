@@ -81,5 +81,10 @@
   "androidShellErrorInvalidResponse": "没有收到有效的原生状态，请刷新或更新 App。",
   "androidShellErrorStopped": "本轮已结束或暂停，请重新开启后再试。",
   "androidShellErrorStopFailed": "未确认已停止，请刷新状态并重试停止。",
-  "androidShellErrorUnknown": "未能确认操作结果。先核实结果；已派发的命令不要自动重试。"
+  "androidShellErrorUnknown": "未能确认操作结果。先核实结果；已派发的命令不要自动重试。",
+  "androidShellRootName": "Root",
+  "androidShellRootHint": "手机已经 root（Magisk、KernelSU、APatch 都行）。点「连接」后 root 管理器会请求一次授权，之后这条通道直接以 root 身份执行命令；不需要 Shizuku、无线调试，也不需要无障碍服务。",
+  "androidShellRootAvailable": "已找到 su",
+  "androidShellErrorRootMissing": "这台手机上没找到 su。请先 root 手机（Magisk / KernelSU / APatch），或在 root 管理器里重新启用 su。",
+  "androidShellErrorRootDenied": "root 授权被拒绝。请在 root 管理器里允许 dsh-Go 使用 su，然后再点连接。"
 }

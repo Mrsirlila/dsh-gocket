@@ -3476,6 +3476,36 @@ abstract class L10n {
   /// **'未能确认操作结果。先核实结果；已派发的命令不要自动重试。'**
   String get androidShellErrorUnknown;
 
+  /// No description provided for @androidShellRootName.
+  ///
+  /// In zh, this message translates to:
+  /// **'Root'**
+  String get androidShellRootName;
+
+  /// No description provided for @androidShellRootHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'手机已经 root（Magisk、KernelSU、APatch 都行）。点「连接」后 root 管理器会请求一次授权，之后这条通道直接以 root 身份执行命令；不需要 Shizuku、无线调试，也不需要无障碍服务。'**
+  String get androidShellRootHint;
+
+  /// No description provided for @androidShellRootAvailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'已找到 su'**
+  String get androidShellRootAvailable;
+
+  /// No description provided for @androidShellErrorRootMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'这台手机上没找到 su。请先 root 手机（Magisk / KernelSU / APatch），或在 root 管理器里重新启用 su。'**
+  String get androidShellErrorRootMissing;
+
+  /// No description provided for @androidShellErrorRootDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'root 授权被拒绝。请在 root 管理器里允许 dsh-Go 使用 su，然后再点连接。'**
+  String get androidShellErrorRootDenied;
+
   /// No description provided for @androidBackgroundProtectionTitle.
   ///
   /// In zh, this message translates to:
@@ -31407,8 +31437,14 @@ abstract class L10n {
   /// No description provided for @pocketHosts.
   ///
   /// In zh, this message translates to:
-  /// **'DSH Pocket / Remote'**
+  /// **'DSH Pocket'**
   String get pocketHosts;
+
+  /// No description provided for @pocketRemoteRelay.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他方式：DSH Remote'**
+  String get pocketRemoteRelay;
 
   /// No description provided for @pocketHostsFooter.
   ///

@@ -81,5 +81,10 @@
   "androidShellErrorInvalidResponse": "No valid native status was received. Refresh or update the app.",
   "androidShellErrorStopped": "This round has ended or is paused. Turn it on again and retry.",
   "androidShellErrorStopFailed": "Stopping was not confirmed. Refresh the status and retry stopping.",
-  "androidShellErrorUnknown": "The outcome could not be confirmed. Verify it first; never automatically retry a dispatched command."
+  "androidShellErrorUnknown": "The outcome could not be confirmed. Verify it first; never automatically retry a dispatched command.",
+  "androidShellRootName": "Root",
+  "androidShellRootHint": "The phone is already rooted (Magisk, KernelSU or APatch). Press Connect: your root manager asks once, then this channel runs commands as root — no Shizuku, no wireless debugging, no accessibility service.",
+  "androidShellRootAvailable": "su found",
+  "androidShellErrorRootMissing": "No su was found on this phone. Root it first (Magisk / KernelSU / APatch), or re-enable su in your root manager.",
+  "androidShellErrorRootDenied": "Root access was denied. Allow dsh-Go in your root manager, then press Connect again."
 }

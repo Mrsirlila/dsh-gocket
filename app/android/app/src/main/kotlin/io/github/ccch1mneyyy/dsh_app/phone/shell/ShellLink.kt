@@ -72,5 +72,17 @@ internal class ShellLink(
                 Bundles.unmarshal(ShellWire.read(input) ?: throw IOException("transportLost"))
             }, { !stream.isClosed }, { stream.close() })
         }
+
+        /** A helper started locally (root `su`), speaking the same framed channel on its stdio. */
+        fun process(process: java.lang.Process): ShellLink {
+            var synced = false
+            val input = process.inputStream
+            val output = process.outputStream
+            return ShellLink("root", { request ->
+                if (!synced) { ShellWire.sync(input); synced = true }
+                ShellWire.write(output, Bundles.marshal(request))
+                Bundles.unmarshal(ShellWire.read(input) ?: throw IOException("transportLost"))
+            }, { process.isAlive }, { runCatching { process.destroy() } })
+        }
     }
 }

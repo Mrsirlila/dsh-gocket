@@ -1831,6 +1831,22 @@ class L10nZh extends L10n {
   String get androidShellErrorUnknown => '未能确认操作结果。先核实结果；已派发的命令不要自动重试。';
 
   @override
+  String get androidShellRootName => 'Root';
+
+  @override
+  String get androidShellRootHint =>
+      '手机已经 root（Magisk、KernelSU、APatch 都行）。点「连接」后 root 管理器会请求一次授权，之后这条通道直接以 root 身份执行命令；不需要 Shizuku、无线调试，也不需要无障碍服务。';
+
+  @override
+  String get androidShellRootAvailable => '已找到 su';
+
+  @override
+  String get androidShellErrorRootMissing => '这台手机上没找到 su。请先 root 手机（Magisk / KernelSU / APatch），或在 root 管理器里重新启用 su。';
+
+  @override
+  String get androidShellErrorRootDenied => 'root 授权被拒绝。请在 root 管理器里允许 dsh-Go 使用 su，然后再点连接。';
+
+  @override
   String get androidBackgroundProtectionTitle => '增强保活';
 
   @override
@@ -17059,7 +17075,10 @@ class L10nZh extends L10n {
   String get pocketHost => 'Pocket 主机';
 
   @override
-  String get pocketHosts => 'DSH Pocket / Remote';
+  String get pocketHosts => 'DSH Pocket';
+
+  @override
+  String get pocketRemoteRelay => '其他方式：DSH Remote';
 
   @override
   String get pocketHostsFooter => '电脑装好 dsh-pocket 插件即可。局域网 / Tailscale / 公网自动切换，连上任一条就同步另外两条的地址和密码。';
