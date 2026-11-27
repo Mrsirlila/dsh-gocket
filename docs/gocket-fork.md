@@ -154,15 +154,28 @@ call ... flutter.bat build apk --release --flavor arm64 --target-platform androi
 
 **默认分支是 `gocket`**（`main` 只作为上游镜像，不要去改）。这样 Actions 里能点到 `Build APK`，它的 `workflow_dispatch` 有 `publish=release`：会先用 `apksigner` 校验不是 debug 签名，再生成三件套，最后 `gh release create`。
 
-⚠ `runtime=upstream` 在这棵树上**会失败**：上游 1.4.1 的 release APK 里 `manifest.json` 缺 `runtime/build-runtime.sh` 里 pin 的 38 个 `ohos-*.diff`，CI 报 `upstream runtime does not match this tree (engine patches missing: …)`。要跳过就用 `runtime=build`（自己构建 runtime，慢），或者干脆在本机发版：
+⚠ `runtime=upstream` 在这棵树上**会失败**：上游 1.4.1 的 release APK 里 `manifest.json` 缺 `runtime/build-runtime.sh` 里 pin 的 38 个 `ohos-*.diff`，CI 报 `upstream runtime does not match this tree (engine patches missing: …)`。要跳过就用 `runtime=build`（自己构建 runtime，runner 上约 7 分钟）。
+
+另外发布包走 `--no-companion`：`tooling/build-apk.sh` 在 release 模式下默认要 `app/assets/companion/whale-girl.zip` 或 `~/keys/dsh-go/companion-pack-whale-girl.zip`（licensed companion pack，不进仓库），缺了会直接 `die`。我们的包历来不带它，CI 里已显式加 `--no-companion`。
+
+还有一步 `Install the NDK that tawcroot pins`：`runtime/tawcroot/build.py` 编 `libtawcroot.so` 时优先读 `ANDROID_NDK_HOME`，而 runner 镜像把它预设成自带的 NDK（版本对不上就报 `needs NDK 28.2.13676358`）。这一步既 `sdkmanager --install "ndk;28.2.13676358"`，也把 `ANDROID_NDK_HOME` 改写到刚装的目录。
+
+**两条发版路都实测通过**（1.4.5）：
 
 ```
-# 1) 构建（build-gocket-<ver>.bat，见上一节）
-# 2) 发版：生成三件套 + 打 tag + 建 Release + 上传（幂等，可重跑）
-pwsh -NoProfile -File D:\android-build\release-gocket.ps1 -Version 1.4.6 -NotesFile D:\android-build\notes-146.md
+# A. Actions 一键（推荐）：ref=gocket，runtime=build，publish=release
+#    tag 留空 = v<app/pubspec.yaml 的版本名>；notes 留空 = 一行默认文案
+#    （想要详细更新说明就把 notes 填上，否则 update.json 里的 notes 只有一行）
+gh workflow run build-apk.yml -f runtime=build -f publish=release
+
+# B. 本机发版（不依赖 CI）：
+#    1) 构建：build-gocket-<ver>.bat
+#    2) pwsh -NoProfile -File D:\android-build\release-gocket.ps1 -Version 1.4.6 -NotesFile D:\android-build\notes-146.md
 ```
 
 `release-gocket.ps1` 会先核对 `app/pubspec.yaml` 的版本号，对不上直接退出；重复跑同一个版本会覆盖旧资产。它用 `git credential` 里的 PAT，需要 `py` 与 `curl` 在 PATH。
+
+同一个版本名重发时：Release 的 body 保留（走 `gh release upload --clobber`），但三件套会被新包替换，`update.json` 的 `version` 会带上新的构建号（`1.4.5+11280435`）。客户端只在版本**名**变大时才提示更新，所以同版本重发不会骚扰已装的用户。CI 产出的包比本机构建的小约 4 MB（runtime 由 CI 从源码构建，本机用的是 `runtime/out/` 里已有的那份），两个包签名相同、可以互相覆盖安装。
 
 
 ## 测试的已知噪声（不是回归）
