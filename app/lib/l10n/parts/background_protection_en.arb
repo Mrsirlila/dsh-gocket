@@ -1,5 +1,10 @@
 {
   "@@locale": "en",
+  "androidBackgroundProtectionTitle": "Enhanced background protection",
+  "androidBackgroundProtectionAudioHint": "Plays silent audio while local tasks run in the background. May use more battery.",
+  "androidBackgroundProtectionLocationHint": "Uses approximate location and may use more battery. Coordinates are not saved or sent. Turning it off stops location updates without revoking system access.",
+  "androidBackgroundProtectionNeedsLocation": "Location access hasn’t been granted. Tap to open the app’s system settings and allow location under Permissions.",
+  "androidBackgroundProtectionNeedsAlways": "Background location is not active. Tap to open the app’s system settings and choose “Allow all the time” for Location under Permissions.",
   "backgroundProtectionDescription": "Off by default. Protection is attempted only while local tasks are active and the app is in the background; the system may still pause them.",
   "backgroundProtectionAudio": "Silent audio protection",
   "backgroundProtectionAudioHint": "Plays silent audio in the background during tasks, using more battery. Does not take over recording, calls, or speech playback.",
@@ -20,5 +25,9 @@
   "backgroundProtectionTaskUnavailable": "This build lacks the required system eligibility. Keep the app in the foreground or use a remote host.",
   "backgroundProtectionUnavailable": "Protection is temporarily unavailable. Return to the app and retry; keep long tasks in the foreground or use a remote host.",
   "backgroundProtectionCleanup": "The previous background protection is still being released.",
-  "backgroundProtectionUpdateFailed": "Could not update background protection. Check the current status and try again."
+  "backgroundProtectionUpdateFailed": "Could not update background protection. Check the current status and try again.",
+  "remoteBackgroundProtectionTitle": "Remote connection protection",
+  "remoteBackgroundAudioHint": "Plays silent audio in the background and may use more battery. The system may still suspend the connection.",
+  "remoteBackgroundLocationHint": "Uses only approximate location and requires background access. Coordinates aren’t saved or sent. This may use more battery.",
+  "remoteBackgroundLocationPermission": "Allow background location access, then turn this option on."
 }

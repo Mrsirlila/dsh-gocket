@@ -44,7 +44,7 @@ import '../../state/drawer_view_state.dart';
 import '../../state/engine_control.dart';
 import '../../state/engine_settings_state.dart' show engineSettingsProvider;
 import '../../state/features_state.dart' show agentPresetsProvider, permissionStateProvider;
-import '../../state/hosts_state.dart' show HostKind, HostRef, activeHostProvider;
+import '../../state/hosts_state.dart' show HostKind, HostRef, activeHostProvider, hostLabel;
 import '../../state/media_generation.dart';
 import '../../state/mention_state.dart';
 import '../../state/models_state.dart';
@@ -76,6 +76,7 @@ import '../plugins/native/composer_strip.dart' show ComposerStripSlot;
 import '../plugins/native/native_composer_bar.dart';
 import '../plugins/native/native_taps.dart' show NativeComposerHost, NativeComposerScope, runNativeAction;
 import '../plugins/seats/plugin_overlay_layer.dart';
+import '../remote/host_status.dart';
 import '../safe_mode/engine_failure_card.dart';
 import '../safe_mode/safe_mode_banner.dart';
 import '../session/session_detail_page.dart';
@@ -105,6 +106,7 @@ import 'mention/mention_controller.dart';
 import 'mention/mention_picker.dart';
 import 'mention/mention_text_controller.dart';
 import 'model_sheet.dart';
+import 'run_info.dart';
 import 'slash_palette.dart';
 import 'trajectory_sheet.dart';
 import 'usage_sheet.dart';
@@ -116,6 +118,7 @@ import 'widgets/permission_pill.dart';
 import 'widgets/plus_panel.dart';
 import 'widgets/quote_chip.dart';
 import 'widgets/read_only_bar.dart';
+import 'widgets/phone_skill_banner.dart';
 import 'widgets/unknown_results_banner.dart';
 
 /// 聊天页:玻璃顶栏 + 消息列表 + 玻璃输入条。
@@ -214,15 +217,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
 
   // Keep this slash draft closed until it leaves slash input or starts again at "/".
   String? _dismissedSlashText;
+  final _slashDraft = ValueNotifier<TextEditingValue?>(null);
   double? _keyboardInset;
   final _composerGroup = Object();
 
-  void _resetSlashDismissal() {
+  void _updateSlashDraft() {
+    final value = _input.value;
+    final text = value.text;
+    final slash = text.trimLeft().startsWith('/');
+    _slashDraft.value = slash ? value : null;
     final dismissed = _dismissedSlashText;
     if (dismissed == null) return;
-    final text = _input.text;
     final newSlash = text.trim() == '/' && dismissed.trim() != '/';
-    _dismissedSlashText = parseSlashInput(text) == null || newSlash ? null : text;
+    _dismissedSlashText = !slash || newSlash ? null : text;
   }
 
   void _dismissSlashPalette() {
@@ -415,8 +422,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     _draftStore = ref.read(draftStoreProvider.notifier);
     // Start reading what earlier sessions still owe before the first send.
     ref.read(owedSetupsProvider.notifier);
+    _input.addListener(_updateSlashDraft);
     _showDraft(ref.read(draftStoreProvider).drafts[_draftKey]);
-    _input.addListener(_resetSlashDismissal);
     _input.addListener(_saveDraft);
     ref.listenManual(currentSessionProvider, (_, next) {
       // Another conversation: nothing of this one is read aloud any more.
@@ -541,7 +548,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     _creating = null;
     _syncWait = null;
     _composerToastWait?.cancel();
-    _input.removeListener(_resetSlashDismissal);
+    _input.removeListener(_updateSlashDraft);
+    _slashDraft.dispose();
     _input.removeListener(_saveDraft);
     _mentions.dispose();
     _voice.removeListener(_reportVoice);
@@ -774,6 +782,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     // A new message: the reply being read aloud is old news.
     ref.read(readAloudProvider.notifier).stop();
     _input.clear();
+    // An already empty field does not notify, and the saved draft still holds the attachments.
+    _saveDraft();
     ref.read(composerQuoteProvider.notifier).clear(sessionId);
 
     // One open question and nothing else waiting: the text is its answer
@@ -1034,6 +1044,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     }
     if (_drafts.isEmpty && prompt.attachments.isNotEmpty) {
       setState(() => _drafts = prompt.attachments);
+      _saveDraft();
       restored = true;
     }
     if (restored) _focus.requestFocus();
@@ -1474,7 +1485,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   }
 
   void _openUsage(String sessionId, ModelSelection? model) {
-    showUsageSheet(context, sessionId: sessionId, model: model);
+    final turns = ref.read(chatProvider(sessionId)).turns;
+    showUsageSheet(context, sessionId: sessionId, model: model, speed: speedFigure(tracesTokensPerSecond(turns)));
   }
 
   /// The header's 语音通话 key: a call with the conversation on screen.
@@ -1606,7 +1618,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     final connAsync = ref.watch(activeConnectionProvider);
     final conn = connAsync.value;
     final connected = conn != null;
-    final local = ref.watch(activeHostProvider.select((h) => h.kind == HostKind.local));
+    final host = ref.watch(activeHostProvider);
+    final local = host.isLocal;
     final starting = local && ref.watch(localRuntimeProvider.select((s) => s.status.phase == RuntimePhase.starting));
     final tidying = starting && ref.watch(localRuntimeProvider.select((s) => s.status.tidyingFiles));
     // The engine stopped on its own: the failure card above the empty state
@@ -1725,33 +1738,49 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     };
     final approval = chat?.approval;
     final question = chat?.question;
-    final status = _status(
-      connecting: connAsync.isLoading && conn == null,
-      starting: starting,
-      connected: connected,
-      idleLabel: switch (localIdle) {
-        RuntimePhase.notInstalled => l10n.phoneEngineNotInstalled,
-        RuntimePhase.installed => l10n.commonStopped,
-        _ => null,
-      },
-      streamLost: chat?.streamLost ?? false,
-      syncing: chat?.syncing ?? false,
-      label: conn?.label ?? l10n.commonThisPhone,
-      connection: chat?.connection,
-      running: chat?.running ?? false,
-      stopping: chat?.stopping ?? false,
-      waiting: approval != null
-          ? l10n.commonWaitingApproval
-          : question != null
-          ? l10n.commonWaitingAnswer
-          : null,
-      // The live region reads out what is waiting, or how the turn ended.
-      spoken: approval != null
-          ? approvalText(approval)
-          : question != null
-          ? questionText(question)
-          : _spoken,
-    );
+    final remoteStatus = local ? null : watchHostStatus(ref, host, showRelayPath: true);
+    // The link and the conversation recover separately, even on the same client.
+    final linkReady = remoteStatus?.tone == StatusTone.ok;
+    // The live region reads out what is waiting, or how the turn ended.
+    final spoken = approval != null
+        ? approvalText(approval)
+        : question != null
+        ? questionText(question)
+        : _spoken;
+    final sessionStatus = connected && (local || linkReady)
+        ? _sessionStatus(
+            remote: !local,
+            streamLost: chat?.streamLost ?? false,
+            syncing: chat?.syncing ?? false,
+            connection: chat?.connection,
+            running: chat?.running ?? false,
+            stopping: chat?.stopping ?? false,
+            waiting: approval != null
+                ? l10n.commonWaitingApproval
+                : question != null
+                ? l10n.commonWaitingAnswer
+                : null,
+            spoken: spoken,
+          )
+        : null;
+    final status = switch (remoteStatus) {
+      final remote? => HeaderStatus(
+        remote.tone,
+        remote.label,
+        spoken: linkReady && sessionStatus == null ? spoken : null,
+      ),
+      null when sessionStatus != null => sessionStatus,
+      null when conn != null => HeaderStatus(StatusTone.ok, conn.label, spoken: spoken),
+      _ => _localOfflineStatus(
+        starting: starting,
+        connecting: connAsync.isLoading,
+        idleLabel: switch (localIdle) {
+          RuntimePhase.notInstalled => l10n.phoneEngineNotInstalled,
+          RuntimePhase.installed => l10n.commonStopped,
+          _ => null,
+        },
+      ),
+    };
     final narrow = MediaQuery.sizeOf(context).width < WindowClass.mediumMin;
     // Where a new conversation starts (the drawer's workspace, else the one a
     // remote host falls back to, so the host's start directory is never silent).
@@ -1766,6 +1795,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     // A subagent conversation: 「‹ 上级对话」 takes the menu key's place, so
     // the 新对话 key would have nothing to mirror.
     final isChild = sessionId != null && ref.watch(subagentParentProvider(sessionId).select((p) => p != null));
+    final headerDetails = [
+      if (!local) hostLabel(host.kind, ref.watch(hostNameProvider(host))),
+      if (narrow && !isChild)
+        ?folderLabel(
+          ref.watch(
+            sessionsProvider.select(
+              (s) => s.value?.where((session) => session.sessionId == sessionId).firstOrNull?.cwd,
+            ),
+          ),
+        ),
+    ];
     // 生成模式: this conversation's, and what the host can do.
     final generate = ref.watch(generateModeProvider.select((m) => m.byKey[_draftKey]));
     final mediaReady = ref.watch(mediaPluginProvider) == MediaPluginState.ready;
@@ -1952,15 +1992,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                         scrolledUnder: sessionId == null ? null : _scrolledUnder,
                         title: title,
                         status: status,
-                        detail: !narrow || isChild
-                            ? null
-                            : folderLabel(
-                                ref.watch(
-                                  sessionsProvider.select(
-                                    (s) => s.value?.where((session) => session.sessionId == sessionId).firstOrNull?.cwd,
-                                  ),
-                                ),
-                              ),
+                        sessionStatus: local ? null : sessionStatus,
+                        detail: headerDetails.isEmpty ? null : headerDetails.join(' · '),
                         onOpenDrawer: widget.onOpenDrawer,
                         onNewChat: sessionId == null || isChild
                             ? null
@@ -1995,7 +2028,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: AppSpace.floatingWidth),
                         child: ListenableBuilder(
-                          listenable: Listenable.merge([_input, _mentions]),
+                          listenable: Listenable.merge([_slashDraft, _mentions]),
                           builder: (context, _) {
                             // The `@` word at the caret wins over a "/" line.
                             final live = connected && !readOnly;
@@ -2137,6 +2170,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                                       padding: const EdgeInsets.only(bottom: 8),
                                     ),
                                   ),
+                                if (sessionId != null && !readOnly)
+                                  PhoneSkillBanner(sessionId: sessionId, padding: const EdgeInsets.only(bottom: 8)),
                                 SmoothSize(
                                   duration: AppMotion.of(context, AppMotion.standard),
                                   curve: AppMotion.std,
@@ -2385,34 +2420,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     showTrajectorySheet(context, sessionId: sessionId, turn: turn);
   }
 
-  static HeaderStatus _status({
-    required bool connecting,
-    required bool starting,
-    required bool connected,
-    String? idleLabel,
+  static HeaderStatus _localOfflineStatus({required bool starting, required bool connecting, String? idleLabel}) {
+    if (starting) return HeaderStatus(StatusTone.busy, appL10n.chatStarting);
+    return connecting
+        ? HeaderStatus(StatusTone.busy, appL10n.chatConnecting)
+        : HeaderStatus(StatusTone.idle, idleLabel ?? appL10n.commonNotConnected);
+  }
+
+  static HeaderStatus? _sessionStatus({
+    required bool remote,
     required bool streamLost,
     required bool syncing,
-    required String label,
     required DshConnectionState? connection,
     required bool running,
     required bool stopping,
     required String? waiting,
     String? spoken,
   }) {
-    if (!connected) {
-      if (starting) return HeaderStatus(StatusTone.busy, appL10n.chatStarting);
-      return connecting
-          ? HeaderStatus(StatusTone.busy, appL10n.chatConnecting)
-          : HeaderStatus(StatusTone.idle, idleLabel ?? appL10n.commonNotConnected);
-    }
-    if (streamLost) {
-      return HeaderStatus(StatusTone.error, appL10n.chatDisconnected);
-    }
+    final disconnected = remote ? appL10n.stateChatSyncInterrupted : appL10n.chatDisconnected;
+    if (streamLost) return HeaderStatus(StatusTone.error, disconnected);
     switch (connection) {
       case DshConnectionState.reconnecting || DshConnectionState.connecting:
-        return HeaderStatus(StatusTone.warn, appL10n.chatReconnecting);
+        return remote
+            ? HeaderStatus(StatusTone.busy, appL10n.stateChatSynchronizing)
+            : HeaderStatus(StatusTone.warn, appL10n.chatReconnecting);
       case DshConnectionState.unauthorized || DshConnectionState.closed:
-        return HeaderStatus(StatusTone.error, appL10n.chatDisconnected);
+        return HeaderStatus(StatusTone.error, disconnected);
       default:
         break;
     }
@@ -2424,7 +2457,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     if (running) {
       return HeaderStatus(StatusTone.busy, appL10n.chatGenerating, spoken: spoken);
     }
-    return HeaderStatus(StatusTone.ok, label, spoken: spoken);
+    return null;
   }
 }
 

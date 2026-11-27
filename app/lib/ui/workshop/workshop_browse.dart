@@ -23,12 +23,10 @@ import 'workshop_item_sheet.dart';
 import 'workshop_text.dart';
 import 'workshop_widgets.dart';
 
-/// The slivers of the 发现 tab. [onSubmit] is offered when the catalogue is
-/// empty; [onReport] is passed on to the detail sheet.
+/// The slivers of the 发现 tab. [onReport] is passed on to the detail sheet.
 class WorkshopBrowseSliver extends ConsumerStatefulWidget {
-  const WorkshopBrowseSliver({super.key, this.onSubmit, this.onReport});
+  const WorkshopBrowseSliver({super.key, this.onReport});
 
-  final VoidCallback? onSubmit;
   final ValueChanged<WorkshopEntry>? onReport;
 
   @override
@@ -116,6 +114,7 @@ class _WorkshopBrowseSliverState extends ConsumerState<WorkshopBrowseSliver> {
                   (WorkshopKindFilter.all, l10n.workshopKindAll),
                   (WorkshopKindFilter.pet, l10n.workshopKindPet),
                   (WorkshopKindFilter.companion, l10n.workshopKindCompanion),
+                  (WorkshopKindFilter.theme, AppLocale.isEnglish ? 'Themes' : '主题包'),
                 ])
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
@@ -148,8 +147,6 @@ class _WorkshopBrowseSliverState extends ConsumerState<WorkshopBrowseSliver> {
                       icon: AppIcons.workshop,
                       title: l10n.workshopEmptyTitle,
                       message: l10n.workshopEmptyMessage,
-                      actionLabel: widget.onSubmit == null ? null : l10n.workshopTabMine,
-                      onAction: widget.onSubmit,
                     ),
             ),
           )

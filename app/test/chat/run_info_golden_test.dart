@@ -4,6 +4,7 @@
 // Regenerate with
 // `flutter test --update-goldens test/chat/run_info_golden_test.dart`.
 
+import 'package:dsh_app/state/chat_state.dart';
 import 'package:dsh_app/ui/chat/chat_screen.dart';
 import 'package:dsh_app/ui/chat/diff_page.dart';
 import 'package:dsh_app/ui/chat/dock/dock_stack.dart' show DockFoldController;
@@ -104,7 +105,9 @@ void main() {
       final harness = ChatHarness(session: 's1', states: {'s1': runInfoState(finished: true)});
       await _pumpChat(tester, harness, Brightness.light);
       expect(find.byType(TurnFootnote), findsOneWidget);
-      expect(find.text('1 分 23 秒 · 5 步 · 80.1K tokens'), findsOneWidget);
+      // This width drops the token count before the speed, so the footnote shows
+      // the shorter variant even though variants() still offers the full one.
+      expect(find.text('1 分 23 秒 · 5 步 · 117 tokens/秒'), findsOneWidget);
 
       await tester.tap(find.byType(TurnFootnote));
       await pumpFrames(tester, 8);
@@ -123,6 +126,30 @@ void main() {
       await tester.tap(find.byTooltip('返回'));
       await pumpFrames(tester, 8);
       expect(find.byType(TrajectorySheet), findsOneWidget);
+    });
+
+    testWidgets('tool details rebuild for the last matching call, not for unrelated drafts', (tester) async {
+      final state = runInfoState();
+      final harness = ChatHarness(states: {'s1': state});
+      await tester.pumpWidget(
+        testApp(
+          const StepDetailPage(sessionId: 's1', turn: 1, kind: TraceKind.tool, callId: 'c-write'),
+          overrides: harness.overrides,
+        ),
+      );
+      void publish(ChatItem tail) =>
+          harness.controllers['s1']!.emit(ChatState(items: [...state.items, tail], turns: state.turns, running: true));
+      FactsCard facts() => tester.widget<FactsCard>(find.byType(FactsCard));
+      final built = {facts()};
+      for (var i = 1; i <= 5; i++) {
+        publish(AssistantChatItem(id: 'draft', text: 'x' * i, reasoning: '', streaming: true));
+        await tester.pump();
+        built.add(facts());
+      }
+      expect(built, hasLength(1));
+      publish(const ToolChatItem(callId: 'c-write', name: 'write', arguments: '{}', status: ToolStatus.running));
+      await tester.pump();
+      expect(built.contains(facts()), isFalse);
     });
 
     testWidgets('change card opens the change page; swipe moves the chip', (tester) async {

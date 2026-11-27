@@ -4,6 +4,7 @@
 // step start to first token; work in progress has no invented end).
 
 import 'package:dsh_client/dsh_client.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/chat_state.dart';
@@ -70,6 +71,49 @@ String? turnCostLabel(TurnTrace trace) {
   if (pricing == null || trace.usage.isEmpty) return null;
   return formatCost(estimateTraceCost(trace.usage, pricing), pricing.currency);
 }
+
+/// 这些回合的出字速度:模型请求的输出 token 合计 ÷ 解码时长合计。
+///
+/// 与单步详情同一口径(首字到消息落定,[TraceSpan.decoding]);一轮里可能有
+/// 多次请求(每次工具往返后重开),传整段会话就是全程平均。测不出(没有用量
+/// 或首字时间)时为 null。
+double? tracesTokensPerSecond(Iterable<TurnTrace> traces) {
+  var output = 0;
+  var decoding = 0;
+  for (final trace in traces) {
+    for (final span in trace.spans) {
+      final tokens = span.usage?.outputTokens ?? 0;
+      final time = span.decoding;
+      if (span.kind != TraceKind.model || tokens <= 0 || time == null) continue;
+      output += tokens;
+      decoding += time.inMilliseconds;
+    }
+  }
+  if (output <= 0 || decoding < 200) return null;
+  return output / (decoding / 1000);
+}
+
+/// 一轮的出字速度。
+double? turnTokensPerSecond(TurnTrace trace) => tracesTokensPerSecond([trace]);
+
+/// 速度的数字部分(`117`、`8.5`),单位另写;测不出时为 null。
+///
+/// 一位小数只到 9.9;9.95 起取整,免得 `9.99` 写成 `10.0`。
+String? speedFigure(double? speed) => speed == null
+    ? null
+    : speed < 9.95
+    ? speed.toStringAsFixed(1)
+    : speed.round().toString();
+
+/// `117 tokens/秒`;测不出时为 null。
+String? speedText(double? speed) {
+  final figure = speedFigure(speed);
+  if (figure == null) return null;
+  return appL10n.activityStepTokenSpeed(figure);
+}
+
+/// 一轮的 `117 tokens/秒`;测不出时为 null。
+String? turnSpeedLabel(TurnTrace trace) => speedText(turnTokensPerSecond(trace));
 
 // -----------------------------------------------------------------------------
 // 一段轨迹叫什么
@@ -189,7 +233,7 @@ List<TrajectoryRow> trajectoryRows(TurnTrace trace) {
 
 /// 一组工具调用的摘要("执行 2 条命令 · 读了 3 个文件")。
 String groupLabel(List<TraceSpan> spans, Map<String, ToolChatItem> tools) =>
-    summarizeTools([for (final span in spans) viewOfSpan(span, tools[span.callId]).item]).label;
+    summarizeTools([for (final span in spans) tools[span.callId] ?? viewOfSpan(span).item]).label;
 
 /// 列表里的工具调用,按 callId。
 Map<String, ToolChatItem> toolsById(List<ChatItem> items) => {
@@ -326,6 +370,13 @@ class RunActivity {
   );
 }
 
+/// [runActivityOf] of a conversation, worked out once per chat update for the
+/// activity strip and the pet alike. Its titles are in the language of the
+/// moment: the app invalidates it after switching [appL10n].
+final runActivityProvider = Provider.autoDispose.family<RunActivity?, String>(
+  (ref, sessionId) => ref.watch(chatProvider(sessionId).select(runActivityOf)),
+);
+
 /// 生成中的这一刻在做什么:正在停止 > 等你 > 正在跑的工具 > 正在流的回复 /
 /// 推理 > 重试 > 等首字。
 RunActivity? runActivityOf(ChatState s) {
@@ -447,8 +498,8 @@ RunActivity? runActivityOf(ChatState s) {
           since: openSince((sp) => sp.callId == item.callId) ?? openSince((sp) => sp.kind == TraceKind.model),
         );
       case AssistantChatItem(:final streaming, :final text, :final reasoning) when streaming:
-        final writing = text.trim().isNotEmpty;
-        final thinking = reasoning.trim().isNotEmpty;
+        final writing = text.trimLeft().isNotEmpty;
+        final thinking = reasoning.trimLeft().isNotEmpty;
         return make(
           writing
               ? ActivityKind.writing
@@ -501,7 +552,7 @@ RunActivity compactionActivity(ChatState s, DateTime since) {
 String? narrationOf(List<ChatItem> items) {
   for (final item in items.reversed) {
     if (item is UserChatItem) return null;
-    if (item is AssistantChatItem && item.text.trim().isNotEmpty) {
+    if (item is AssistantChatItem && item.text.trimLeft().isNotEmpty) {
       return extractNarration(item.text);
     }
   }

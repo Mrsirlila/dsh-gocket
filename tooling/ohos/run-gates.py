@@ -95,7 +95,19 @@ def source_files(root, ignored=IGNORED):
 
 
 def flutter_inputs(root):
-    selected = {path: value for path, value in source_files(root).items() if path == 'app/pubspec.yaml'}
+    # app/pubspec.yaml is the one protected input outside the trees below: read
+    # that record directly (source_files()'s fields) instead of hashing the whole
+    # repository to find it. A symlinked app/ is not descended, as in the walk;
+    # a symlinked pubspec is still recorded and refused by `links` below.
+    pubspec = root / 'app/pubspec.yaml'
+    selected = {}
+    if not (root / 'app').is_symlink() and (pubspec.is_symlink() or pubspec.is_file()):
+        if pubspec.is_symlink():
+            selected['app/pubspec.yaml'] = {'type': 'symlink', 'target': os.readlink(pubspec)}
+        else:
+            stat = pubspec.stat()
+            selected['app/pubspec.yaml'] = {'type': 'file', 'bytes': stat.st_size,
+                                            'mode': stat.st_mode & 0o777, 'sha256': sha(pubspec)}
     for directory in ('app/lib', 'app/test', 'packages'):
         path = root / directory
         if path.is_symlink():
@@ -1216,6 +1228,7 @@ def main():
     for mode in ['plain', 'jitless']:
         g.node_tests('plugin-store-recovery-' + mode, [rt + 'plugin-store.test.mjs', rt + 'plugin-linkless-recovery.test.mjs'], mode=mode, needs=('prepared-inputs',))
     g.node_tests('provider-body-timeout', [rt + 'provider-body-timeout.test.mjs'], needs=('android-targets',))
+    g.node_tests('inspector-compat', [rt + 'inspector-compat.test.mjs'], needs=('android-targets',), timeout=30)
     for mode in ['plain', 'jitless']:
         g.node_tests('piai-text-preabort-' + mode, [rt + 'piai-text-preabort.test.mjs'],
                      mode=mode, imports=(rt + 'piai-empty-models-network.mjs',),

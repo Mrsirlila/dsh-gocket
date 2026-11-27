@@ -13,11 +13,13 @@ import 'package:dsh_app/state/workshop_preferences.dart';
 import 'package:dsh_app/state/workshop_publication.dart';
 import 'package:dsh_app/state/workshop_publish_sources.dart';
 import 'package:dsh_app/state/workshop_publish_state.dart';
+import 'package:dsh_app/ui/workshop/workshop_auto_cover.dart';
 import 'package:dsh_app/ui/workshop/workshop_publish_page.dart';
 import 'package:dsh_app/ui/workshop/workshop_publish_preview.dart';
 import 'package:dsh_app/ui/workshop/workshop_publish_text.dart';
 import 'package:dsh_app/workshop/workshop_models.dart';
 import 'package:dsh_app/workshop/workshop_preview.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -46,11 +48,14 @@ class _World {
       : _RecoveryPreferences(events, recovery!);
   _RecoveryPreferences get journal => preferences as _RecoveryPreferences;
 
-  /// What the system file picker hands back for a cover.
+  /// What the cover picker hands back after local normalization.
   Future<Uint8List?> Function()? pickCover;
+  ValueChanged<Uint8List?>? finishAutoCover;
+  bool generateCover = false;
   late final client = PublishClient(events);
   late final drafts = PublishDrafts(events);
   List<WorkshopPublishSource> sources = [publishSource];
+  Future<WorkshopPublishSources> Function()? loadSources;
   Map<String, WorkshopException> issues = {};
   WorkshopPublishController Function()? publisher;
   int ids = 0;
@@ -60,6 +65,7 @@ class _World {
   void capabilities({bool uploads = true, bool companion = true, List<String>? previews}) =>
       client.value = WorkshopCapabilities.fromJson({
         ...workshopCaps(uploads: uploads, companion: companion, account: authAccount.toString()),
+        'kinds': ['pet', 'companion', 'theme'],
         if (previews != null)
           'preview': {
             'schema': 1,
@@ -80,11 +86,41 @@ class _World {
     workshopRestoreDraftProvider.overrideWithValue(drafts.restore),
     workshopRequestIdProvider.overrideWithValue(() => (++ids).toRadixString(16).padLeft(32, '0')),
     workshopSourcesLoaderProvider.overrideWithValue(
-      () async => WorkshopPublishSources(values: sources, issues: issues),
+      loadSources ?? (() async => WorkshopPublishSources(values: sources, issues: issues)),
     ),
+    workshopAutoCoverBuilderProvider.overrideWithValue((source, onResult) {
+      if (generateCover) {
+        finishAutoCover = onResult;
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) => onResult(null));
+      }
+      return const SizedBox.shrink();
+    }),
     workshopCoverPickerProvider.overrideWithValue(() async => pickCover == null ? null : await pickCover!()),
     if (publisher case final publisher?) workshopPublishProvider.overrideWith(publisher),
   ];
+}
+
+class _FailingFilePicker extends FilePickerPlatform {
+  int picks = 0;
+
+  @override
+  Future<PlatformFile?> pickFile({
+    String? dialogTitle,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    Function(FilePickerStatus)? onFileLoading,
+    int compressionQuality = 0,
+    AndroidOptions androidOptions = const AndroidOptions(),
+    DarwinOptions darwinOptions = const DarwinOptions(),
+    WindowsOptions windowsOptions = const WindowsOptions(),
+    LinuxOptions linuxOptions = const LinuxOptions(),
+    WebOptions webOptions = const WebOptions(),
+  }) async {
+    if (++picks == 1) throw StateError('Picker could not open');
+    return null;
+  }
 }
 
 class _RecoverySnapshot implements WorkshopPendingRecoverySnapshot {
@@ -122,13 +158,18 @@ class _RecoveryPreferences extends PublishPreferences implements WorkshopPending
 }
 
 class _Opener extends StatelessWidget {
-  const _Opener();
+  const _Opener({this.onReturn});
+
+  final ValueChanged<bool?>? onReturn;
 
   @override
   Widget build(BuildContext context) => Scaffold(
     body: Center(
       child: TextButton(
-        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const WorkshopPublishPage())),
+        onPressed: () async {
+          final openMine = await WorkshopPublishPage.open(context);
+          onReturn?.call(openMine);
+        },
         child: const Text('open'),
       ),
     ),
@@ -144,13 +185,21 @@ Future<void> _settle(WidgetTester tester) async {
 /// Lets a brief notice run out, so no timer outlives the test.
 Future<void> _clearNotice(WidgetTester tester) => tester.pump(const Duration(seconds: 4));
 
-Future<void> _open(WidgetTester tester, _World world, {Size size = const Size(390, 1800), double textScale = 1}) async {
+Future<void> _open(
+  WidgetTester tester,
+  _World world, {
+  Size size = const Size(390, 1800),
+  double textScale = 1,
+  ValueChanged<bool?>? onReturn,
+}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
   tester.platformDispatcher.textScaleFactorTestValue = textScale;
   addTearDown(tester.view.reset);
   addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-  await tester.pumpWidget(goldenApp(home: const _Opener(), brightness: Brightness.light, overrides: world.overrides));
+  await tester.pumpWidget(
+    goldenApp(home: _Opener(onReturn: onReturn), brightness: Brightness.light, overrides: world.overrides),
+  );
   await tester.tap(find.text('open'));
   await _settle(tester);
 }
@@ -413,6 +462,41 @@ void main() {
   });
 
   group('source and form', () {
+    testWidgets('reopening submission reloads the newly saved local theme', (tester) async {
+      final world = _World()..capabilities();
+      await _open(tester, world);
+      expect(find.text('New theme'), findsNothing);
+      await _tapVisible(tester, find.byTooltip('返回'));
+      world.sources = [const WorkshopPublishSource(kind: 'theme', localId: 'user-new-theme', name: 'New theme')];
+      await _tapVisible(tester, find.text('open'));
+
+      await _tapVisible(tester, find.text('New theme'));
+      expect(_publish(tester).source?.kind, 'theme');
+      expect(tester.widget<TextField>(_field('title-en')).controller!.text, 'New theme');
+      expect(world.client.creates, isEmpty);
+    });
+
+    testWidgets('ZIP picker is usable while sources load and can be retried after a picker error', (tester) async {
+      final original = FilePickerPlatform.instance;
+      final picker = _FailingFilePicker();
+      FilePickerPlatform.instance = picker;
+      addTearDown(() => FilePickerPlatform.instance = original);
+      final loading = Completer<WorkshopPublishSources>();
+      final world = _World()..loadSources = () => loading.future;
+      await _open(tester, world);
+
+      final chooseFile = find.text('从文件选择');
+      expect(find.text('主题、宠物或伙伴的 ZIP，不用先导入'), findsOneWidget);
+      await _tapVisible(tester, chooseFile);
+      expect(find.text('没能读写手机上的文件。'), findsOneWidget);
+      await _tapVisible(tester, chooseFile);
+      expect(picker.picks, 2);
+      loading.complete(WorkshopPublishSources(issues: {'theme': const WorkshopException('workshop_storage')}));
+      await _settle(tester);
+      expect(find.text('没能读出本机的主题包。'), findsOneWidget);
+      expect(chooseFile, findsOneWidget);
+      await _clearNotice(tester);
+    });
     testWidgets('lists what can be sent, and why something cannot', (tester) async {
       final world = _World()
         ..capabilities(companion: false)
@@ -539,7 +623,8 @@ void main() {
   group('submit', () {
     testWidgets('the packed result is shown, and 「投稿」 needs the rights tick', (tester) async {
       final world = _World();
-      await _open(tester, world);
+      bool? openMine;
+      await _open(tester, world, onReturn: (result) => openMine = result);
       await _fillForm(tester);
       await tester.tap(find.text('下一步'));
       await _settle(tester);
@@ -569,6 +654,7 @@ void main() {
       await tester.tap(find.text('回到我的投稿'));
       await _settle(tester);
       expect(find.byType(WorkshopPublishPage), findsNothing);
+      expect(openMine, isTrue);
 
       // Coming back is for sending something else, not for reading it again.
       await tester.tap(find.text('open'));
@@ -901,6 +987,48 @@ void main() {
       expect(_publish(tester).source?.preview, isNull);
     });
 
+    testWidgets('an automatic cover is reviewed and stays removed once dismissed', (tester) async {
+      final world = _World()
+        ..capabilities(previews: _bothPreviews)
+        ..sources = [_companion]
+        ..generateCover = true;
+      await _open(tester, world);
+      await _fillCompanion(tester);
+      expect(find.text('正在生成封面，也可以自己选。'), findsOneWidget);
+
+      final png = workshopPng(48, 24);
+      world.finishAutoCover!(png);
+      await _settle(tester);
+      expect(_publish(tester).source?.previewSource, 'companion-preview');
+      expect(find.text('48×24 · ${formatBytes(png.length)}'), findsOneWidget);
+      await _tapVisible(tester, find.text('下一步'));
+      expect(_publish(tester).preparedMetadata?.previewSource, 'companion-preview');
+      expect(tester.widget<WorkshopCoverThumb>(find.byType(WorkshopCoverThumb)).bytes, same(png));
+
+      await _tapVisible(tester, find.text('修改资料'));
+      await _tapVisible(tester, find.text('移除'));
+      expect(_publish(tester).source?.preview, isNull);
+      expect(find.text('正在生成封面，也可以自己选。'), findsNothing);
+    });
+
+    testWidgets('a late generated image cannot replace a manually selected cover', (tester) async {
+      final world = _World()
+        ..capabilities(previews: _bothPreviews)
+        ..sources = [_companion]
+        ..generateCover = true
+        ..pickCover = () async => workshopPng(32, 16);
+      await _open(tester, world);
+      await _tapVisible(tester, find.text('现在的伙伴'));
+      final finish = world.finishAutoCover!;
+      await _tapVisible(tester, find.text('选一张封面'));
+      final chosen = _publish(tester).source!.preview;
+      expect(chosen?.width, 32);
+
+      finish(workshopPng(48, 24));
+      await _settle(tester);
+      expect(_publish(tester).source?.preview, same(chosen));
+    });
+
     testWidgets('a companion cover: the thumbnail, its size, and the packed result carries it', (tester) async {
       final png = workshopPng(32, 16);
       final world = _World()
@@ -911,7 +1039,7 @@ void main() {
       await _fillCompanion(tester);
 
       expect(find.text('封面（选填）'), findsOneWidget);
-      expect(find.text('PNG，每边不超过 512 像素，不超过 2 MB。不选就显示名字的第一个字。'), findsOneWidget);
+      expect(find.text('支持 JPEG、PNG、WebP 等，上传前自动缩小。不选就显示名字的第一个字。'), findsOneWidget);
       expect(find.text('预览图'), findsNothing);
       expect(_publish(tester).source?.preview, isNull, reason: 'a companion starts without a cover');
 
@@ -937,14 +1065,18 @@ void main() {
     });
 
     for (final (name, pick, words) in <(String, Future<Uint8List?> Function(), String)>[
-      ('an empty file', () async => Uint8List(0), '这张图是空的或超过 2 MB，换一张试试。'),
+      ('an empty file', () async => Uint8List(0), '图片为空或超过 32 MB，换一张试试。'),
       (
         'a file over the limit, refused before it is read',
         () async => throw const WorkshopException('workshop_preview_size'),
-        '这张图是空的或超过 2 MB，换一张试试。',
+        '图片为空或超过 32 MB，换一张试试。',
       ),
-      ('not a PNG', () async => Uint8List.fromList([1, 2, 3, 4]), '这不是一张完整的 PNG 图片，换一张试试。'),
-      ('a PNG wider than 512', () async => workshopPng(600, 8), '这张图太大了，每边最多 512 像素。缩小后再选。'),
+      ('not an image', () async => Uint8List.fromList([1, 2, 3, 4]), '图片损坏或格式不支持，换一张试试。'),
+      (
+        'over the source pixel limit',
+        () async => throw const WorkshopException('workshop_preview_dimensions'),
+        '图片分辨率过高，缩小后再选。',
+      ),
       ('a file that cannot be read', () async => throw StateError('gone'), '没能读出这张图，换一张试试。'),
     ]) {
       testWidgets('a cover that is $name is refused in words, and nothing is set', (tester) async {
@@ -991,7 +1123,7 @@ void main() {
 
       world.pickCover = () async => Uint8List.fromList([9, 9, 9]);
       await _tapVisible(tester, find.text('换一张'));
-      expect(find.text('这不是一张完整的 PNG 图片，换一张试试。'), findsOneWidget);
+      expect(find.text('图片损坏或格式不支持，换一张试试。'), findsOneWidget);
       expect(_publish(tester).source?.preview, same(first));
       expect(find.byType(WorkshopCoverThumb), findsOneWidget);
 
@@ -999,7 +1131,7 @@ void main() {
       world.pickCover = () async => other;
       await _tapVisible(tester, find.text('换一张'));
       expect(find.text('8×8 · ${formatBytes(other.length)}'), findsOneWidget);
-      expect(find.text('这不是一张完整的 PNG 图片，换一张试试。'), findsNothing);
+      expect(find.text('图片损坏或格式不支持，换一张试试。'), findsNothing);
       expect(_publish(tester).source?.preview, isNot(same(first)));
 
       await _tapVisible(tester, find.text('移除'));
@@ -1145,7 +1277,10 @@ void main() {
         final world = _World()
           ..capabilities(previews: _bothPreviews)
           ..sources = [publishSource, _companion]
-          ..pickCover = () async => pick++ == 0 ? workshopPng(512, 512) : workshopPng(513, 1);
+          ..pickCover = () async {
+            if (pick++ == 0) return workshopPng(512, 512);
+            throw const WorkshopException('workshop_preview_dimensions');
+          };
         await _open(tester, world, size: const Size(360, 740), textScale: 1.3);
         if (kind == 'pet') {
           await _tapVisible(tester, find.text('Cat'));
@@ -1158,7 +1293,7 @@ void main() {
           expect(find.byType(WorkshopCoverThumb), findsOneWidget);
           // The cover with a refusal under it is the tallest this group gets.
           await _tapVisible(tester, find.text('换一张'));
-          expect(find.textContaining('每边最多 512 像素'), findsOneWidget);
+          expect(find.text('图片分辨率过高，缩小后再选。'), findsOneWidget);
           await _tapVisible(tester, find.text('移除'));
           await _tapVisible(tester, find.text('选一张封面'));
         }

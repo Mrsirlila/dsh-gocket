@@ -15,14 +15,15 @@ import '../secret_mask.dart';
 import 'message_actions.dart';
 import 'message_selection.dart';
 import 'quote_chip.dart';
+import 'theme_role_tag.dart';
 
 /// 用户消息:**右对齐的软气泡**,比页面深一档,像"按进去"的。
 ///
 /// 禁配:气泡底上只用主文字 / 次级文字;三级文字(4.32)与主色(4.22)
 /// 不过 AA。
 ///
-/// 长按气泡里的字就地选字([MessageSelection]);选区上的「更多」打开菜单:复制 /
-/// 选择文字 / 引用 / 编辑后重发([onEdit])。
+/// 长按气泡里的字就地选字([MessageSelection])，可直接「编辑后重发」([onEdit])；
+/// 选区上的「更多」打开完整菜单。
 ///
 /// 以引用块开头的消息(引用追问),引文画在气泡顶部([BubbleQuote]),
 /// 下面是正文;复制、选择文字、编辑拿到的仍是发出去的原文。
@@ -55,8 +56,8 @@ class UserBubble extends StatelessWidget {
   /// Small text actions after the pending label ("改为插话", "撤回").
   final List<(String, VoidCallback)> pendingActions;
 
-  /// "编辑后重发" in the long-press menu; null leaves it out (optimistic
-  /// bubbles: they have "撤回" instead).
+  /// "编辑后重发" in the selection toolbar and the full menu. Optimistic
+  /// bubbles leave it out; they have "撤回" instead.
   final VoidCallback? onEdit;
 
   /// "引用" in the long-press menu (and in 选择文字); null leaves it out.
@@ -99,7 +100,15 @@ class UserBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surfaces = DshSurfaces.of(context);
-    final style = AppType.chatBody(context, color: surfaces.onUserBubble);
+    final themeStyle = DshThemeStyle.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final bubbleVariant = themeStyle.components.userBubbleStyle;
+    final textColor = switch (bubbleVariant) {
+      ThemeUserBubbleStyle.accent => scheme.onPrimaryContainer,
+      ThemeUserBubbleStyle.minimal => scheme.onSurface,
+      _ => surfaces.onUserBubble,
+    };
+    final style = AppType.chatBody(context, color: textColor);
     // A generation request (generation mode's parameter header on the first
     // line): the description is the bubble, the parameters a small line under
     // the bubble; the header itself is for the host's plugin.
@@ -124,18 +133,52 @@ class UserBubble extends StatelessWidget {
 
     // Its own semantics node, carrying the text; a screen reader's long-press
     // opens the menu.
+    final Decoration bubbleDecoration = themeStyle.pack == null
+        ? ShapeDecoration(color: surfaces.userBubble, shape: AppShape.bubble)
+        : switch (bubbleVariant) {
+            ThemeUserBubbleStyle.soft => ShapeDecoration(
+              color: surfaces.userBubble,
+              shape: themeStyle.bubbleShape(),
+            ),
+            ThemeUserBubbleStyle.outlined => ShapeDecoration(
+              color: surfaces.userBubble.withValues(alpha: 0.72),
+              shape: themeStyle.bubbleShape(
+                themeStyle.userBubbleBorder ?? scheme.outlineVariant,
+                themeStyle.borderWidth.clamp(0.8, 2.0),
+              ),
+            ),
+            ThemeUserBubbleStyle.accent => ShapeDecoration(
+              color: scheme.primaryContainer,
+              shape: themeStyle.bubbleShape(),
+            ),
+            ThemeUserBubbleStyle.minimal => BoxDecoration(
+              border: Border(
+                right: BorderSide(color: themeStyle.rule ?? scheme.primary, width: 2.5),
+              ),
+            ),
+          };
     final bubble = Semantics(
       container: true,
       header: true,
       onLongPress: () => _menu(context),
       child: DecoratedBox(
-        decoration: ShapeDecoration(color: surfaces.userBubble, shape: AppShape.bubble),
+        decoration: bubbleDecoration,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: MessageSelection(text: _shown, onQuote: onQuote, onMore: () => _menu(context), child: content),
+          padding: themeStyle.pack == null
+              ? const EdgeInsets.symmetric(horizontal: 16, vertical: 8)
+              : EdgeInsets.symmetric(horizontal: themeStyle.shapes.bubblePadH, vertical: themeStyle.shapes.bubblePadV),
+          child: MessageSelection(
+            text: _shown,
+            onQuote: onQuote,
+            onEdit: onEdit,
+            onMore: () => _menu(context),
+            child: content,
+          ),
         ),
       ),
     );
+
+    final roleTag = themeStyle.pack == null ? null : themeRoleTag(context, themeStyle, user: true);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -147,6 +190,7 @@ class UserBubble extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              ?roleTag,
               if (attachments case final a?)
                 ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: maxWidth),

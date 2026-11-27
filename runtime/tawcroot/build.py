@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Build libtawcroot.so (tawcroot launcher) for the APK from a pinned tawc commit.
 
-Upstream production sources are compiled unchanged with the project's NDK, on a
-Linux, macOS or Windows host. The source archive is verified before extraction.
+The pinned sources, with the local compatibility patches, are compiled with
+the project's NDK. The archive is verified before extraction.
 Output: runtime/out-tawcroot/jniLibs/<abi>/libtawcroot.so (+ manifest.json),
 picked up by app/android/app/build.gradle.kts. Without it the app still builds;
 the tawcroot launch option then reports itself unavailable.
@@ -26,7 +26,7 @@ import zipfile
 HERE = Path(__file__).resolve().parent
 RUNTIME = HERE.parent
 sys.path.insert(0, str(RUNTIME / "lib"))
-from rtbuild import Elf, stream_digest  # noqa: E402
+from rtbuild import Elf, apply_hunks, parse_unified_diff, stream_digest  # noqa: E402
 
 
 ABIS = {
@@ -91,6 +91,20 @@ def extract_source(archive, source, destination):
             with zipped.open(member) as incoming, path.open("wb") as outgoing:
                 shutil.copyfileobj(incoming, outgoing)
     return destination / "tawcroot"
+
+
+def apply_source_patches(runtime, extracted, patches):
+    """Patch the verified extraction, using the runtime's exact old-block rule."""
+    applied = []
+    for patch_name in patches:
+        patch = runtime / "tawcroot" / patch_name
+        data = patch.read_bytes()
+        for name, hunks in parse_unified_diff(data.decode("utf-8")):
+            target = extracted / name
+            original = target.read_bytes().decode("utf-8")
+            target.write_bytes(apply_hunks(original, hunks, patch.name).encode("utf-8"))
+        applied.append({"path": "tawcroot/" + patch.name, "sha256": hashlib.sha256(data).hexdigest()})
+    return applied
 
 
 def toolchain(ndk, source):
@@ -177,6 +191,7 @@ def build(runtime, ndk, supplied=None, offline=False, output=None):
     with tempfile.TemporaryDirectory(prefix="tawcroot-", dir=work) as scratch:
         scratch = Path(scratch)
         src = extract_source(archive, source, scratch / "source")
+        source_patches = apply_source_patches(runtime, src, source["patches"])
         staged = scratch / "out"
         artifacts = []
         for abi in ABIS:
@@ -196,8 +211,9 @@ def build(runtime, ndk, supplied=None, offline=False, output=None):
             subprocess.run([str(tools["llvm-strip"]), str(artifact)], check=True)
             artifacts.append(audit_artifact(artifact, abi))
         manifest = {
-            "schema": 1,
+            "schema": 2,
             "source": {key: source[key] for key in ("repo", "commit", "archiveSha256")},
+            "sourcePatches": source_patches,
             "ndkVersion": source["ndkVersion"],
             "artifacts": artifacts,
         }
