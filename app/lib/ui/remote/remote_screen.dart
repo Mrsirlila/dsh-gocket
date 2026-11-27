@@ -167,13 +167,25 @@ class _RemoteScreenState extends ConsumerState<RemoteScreen> {
       ],
       children: [
         _ActiveCard(active: active),
-        _ConnectSection(
-          pocket: pocket,
-          active: active,
-          onUse: (h) => unawaited(_use(h)),
-          onOffline: _useOffline,
-          onEditPocket: (h) => push(PocketHostFormPage(existing: h)),
-          onAddPocket: () => unawaited(_addPocket()),
+        SettingsSection(
+          title: l10n.pocketHosts,
+          footer: Text(l10n.pocketHostsFooter),
+          children: [
+            for (final h in pocket)
+              _PocketRow(
+                config: h,
+                active: active == HostRef.pocket(h.id),
+                onTap: () => unawaited(_use(HostRef.pocket(h.id))),
+                onEdit: () => push(PocketHostFormPage(existing: h)),
+              ),
+            SettingsTile(
+              icon: AppIcons.add,
+              tinted: false,
+              spot: Spots.pocketAddHost,
+              subtitle: pocket.isEmpty ? l10n.pocketAddHostHint : null,
+              onTap: () => unawaited(_addPocket()),
+            ),
+          ],
         ),
         SettingsSection(
           title: l10n.remoteSshHosts,
@@ -195,6 +207,7 @@ class _RemoteScreenState extends ConsumerState<RemoteScreen> {
             ),
           ],
         ),
+        _RemoteSection(active: active, onUse: (h) => unawaited(_use(h)), onOffline: _useOffline),
         SettingsSection(
           title: l10n.remoteConnectionSettings,
           children: [
@@ -499,27 +512,13 @@ class _PocketRow extends ConsumerWidget {
   }
 }
 
-/// The two ways to a computer, in one card: a DSH Remote account (the sign-in
-/// card, or that account's hosts once signed in) and DSH Pocket hosts (LAN /
-/// Tailscale / public), each followed by the row that adds another one.
-///
-/// They answer the same question — which computer to drive — and used to be
-/// two cards apart, so the list, the account and both "add" rows are here.
-class _ConnectSection extends ConsumerWidget {
-  const _ConnectSection({
-    required this.pocket,
-    required this.active,
-    required this.onUse,
-    required this.onOffline,
-    required this.onEditPocket,
-    required this.onAddPocket,
-  });
+/// The other way to a computer: a DSH Remote account (the sign-in card, or that
+/// account's hosts once signed in). Pocket hosts own the section above this one.
+class _RemoteSection extends ConsumerWidget {
+  const _RemoteSection({required this.active, required this.onUse, required this.onOffline});
 
-  final List<PocketHostConfig> pocket;
   final HostRef active;
   final ValueChanged<HostRef> onUse;
-  final ValueChanged<PocketHostConfig> onEditPocket;
-  final VoidCallback onAddPocket;
   final ValueChanged<RelayHost> onOffline;
 
   @override
@@ -576,24 +575,10 @@ class _ConnectSection extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(RemotePairingPage.route()),
           ),
       ],
-      for (final h in pocket)
-        _PocketRow(
-          config: h,
-          active: active == HostRef.pocket(h.id),
-          onTap: () => onUse(HostRef.pocket(h.id)),
-          onEdit: () => onEditPocket(h),
-        ),
-      SettingsTile(
-        icon: AppIcons.add,
-        tinted: false,
-        spot: Spots.pocketAddHost,
-        subtitle: pocket.isEmpty ? l10n.pocketAddHostHint : null,
-        onTap: onAddPocket,
-      ),
     ];
 
     return SettingsSection(
-      title: l10n.pocketHosts,
+      title: l10n.pocketRemoteRelay,
       // The credit's link takes taps in the margin below it, so it carries it
       // (the sign-in card is what draws that link).
       margin: signingIn && available ? RelayCredit.sectionMargin : kSettingsGroupMargin,
@@ -609,8 +594,6 @@ class _ConnectSection extends ConsumerWidget {
             Text(l10n.remoteErrRefreshHosts, style: TextStyle(color: DshColors.of(context).danger)),
           if (!signingIn && !account.hostsFailed && account.hosts.length > 1)
             Text(l10n.remoteSwitchWarning),
-          if (signingIn) const SizedBox(height: 6),
-          Text(l10n.pocketHostsFooter),
         ],
       ),
       children: rows,

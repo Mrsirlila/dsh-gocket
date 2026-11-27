@@ -1,6 +1,7 @@
 {
   "pocketHost": "Pocket host",
-  "pocketHosts": "DSH Pocket / Remote",
+  "pocketHosts": "DSH Pocket",
+  "pocketRemoteRelay": "Other ways: DSH Remote",
   "pocketHostsFooter": "Needs the dsh-pocket plugin on the computer. LAN / Tailscale / public switch automatically; any one that connects syncs the other two addresses and PIN.",
   "pocketAddHost": "Add Pocket host",
   "pocketAddHostScan": "Add Pocket host (tap to scan)",

@@ -167,6 +167,7 @@ void main() {
     ];
     await pump(tester, const RemoteScreen());
     await frames(tester, 3);
+    await tester.ensureVisible(find.text('书房 NAS'));
     await tester.tap(find.text('书房 NAS'));
     await frames(tester);
     expect(find.text(appL10n.remoteHostOfflineHint('书房 NAS')), findsOneWidget);
@@ -179,6 +180,7 @@ void main() {
         trust: RelayTrust.unpinned,
       ),
     ];
+    await tester.ensureVisible(find.text('书房 NAS'));
     await tester.tap(find.text('书房 NAS'));
     await frames(tester);
     expect(find.text('信任这台主机？'), findsOneWidget);
@@ -246,6 +248,8 @@ void main() {
     relay.user = null;
     final c = await pump(tester, const RemoteScreen());
     await frames(tester, 3);
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -320));
+    await tester.pump();
     await tester.tap(find.text('自建服务器 · 邮箱登录'));
     await frames(tester);
     await tester.enterText(find.byType(TextField).at(0), 'remote.example.com');
@@ -262,6 +266,8 @@ void main() {
     relay.user = null;
     await pump(tester, const RemoteScreen());
     await frames(tester, 3);
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -320));
+    await tester.pump();
     await tester.tap(find.text('自建服务器 · 邮箱登录'));
     await frames(tester);
     await tester.enterText(find.byType(TextField).at(0), 'http://public.example.com');
