@@ -682,23 +682,26 @@ class _PhoneControlScreenState extends ConsumerState<PhoneControlScreen> {
     if (blocker == PhoneBlocker.remoteHost) return context.l10n.phoneControlLocalOnly;
     if (runtime.runtimeMissing) return context.l10n.localEnvPhoneNeedsRuntime;
     if (runtime.phase != RuntimePhase.running) return context.l10n.phoneControlAfterEngineStarts;
-    if (!s.a11y.enabled) return context.l10n.phoneControlNeedsAccessibility;
+    if (!s.a11y.enabled && !s.rootAvailable) return context.l10n.phoneControlNeedsAccessibility;
     return context.l10n.phoneControlReady;
   }
 
   List<Widget> _setup(PhoneStatus status) {
     final a11y = status.a11y;
+    // su is enough: the main screen reads through uiautomator instead of the service.
+    final rooted = status.rootAvailable;
+    final ready = a11y.ok || rooted;
     final confirmationReady = status.notifications && status.confirmationNotifications != false;
-    final showRestricted = !a11y.enabled && (status.device.mayNeedRestrictedSettings || _a11yAttemptFailed);
+    final showRestricted = !ready && (status.device.mayNeedRestrictedSettings || _a11yAttemptFailed);
     return [
-      if (!a11y.ok || !confirmationReady)
+      if (!ready || !confirmationReady)
         ListPageCard(
           title: context.l10n.phoneControlSetup,
           children: [
-            if (!a11y.ok)
+            if (!ready)
               PhoneStepRow(
                 step: 1,
-                done: a11y.ok,
+                done: ready,
                 title: context.l10n.phoneControlAccessibilityService,
                 subtitle: a11y.ok
                     ? context.l10n.phoneControlAccessibilityReady
@@ -723,7 +726,7 @@ class _PhoneControlScreenState extends ConsumerState<PhoneControlScreen> {
                 subtitleMaxLines: 2,
                 onTap: () => _push(const RestrictedSettingsGuidePage()),
               ),
-            if (a11y.ok && !confirmationReady)
+            if (ready && !confirmationReady)
               PhoneStepRow(
                 step: 2,
                 done: confirmationReady,
@@ -739,15 +742,17 @@ class _PhoneControlScreenState extends ConsumerState<PhoneControlScreen> {
               ),
           ],
         ),
-      if (a11y.ok && confirmationReady)
+      if (ready && confirmationReady)
         ListPageCard(
           title: context.l10n.phoneControlTry,
           children: [
             ListPageRow(
               icon: AppIcons.readScreen,
               title: context.l10n.phoneControlReadScreen,
-              subtitle: a11y.enabled
+              subtitle: a11y.ok
                   ? context.l10n.phoneControlReadScreenHint
+                  : rooted
+                  ? context.l10n.phoneControlRootHint
                   : context.l10n.phoneControlEnableAccessibilityFirst,
               trailing: _testing
                   ? const SizedBox.square(
@@ -755,8 +760,8 @@ class _PhoneControlScreenState extends ConsumerState<PhoneControlScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2, strokeCap: StrokeCap.round),
                     )
                   : null,
-              chevron: !_testing && a11y.enabled,
-              onTap: a11y.enabled && !_testing ? _test : null,
+              chevron: !_testing && ready,
+              onTap: ready && !_testing ? _test : null,
             ),
           ],
         ),

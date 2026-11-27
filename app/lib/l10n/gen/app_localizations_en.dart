@@ -14178,7 +14178,7 @@ class L10nEn extends L10n {
   String get phoneControlAfterEngineStarts => 'Takes effect when the engine starts';
 
   @override
-  String get phoneControlNeedsAccessibility => 'One step left: turn on accessibility';
+  String get phoneControlNeedsAccessibility => 'One step left: turn on accessibility or grant root';
 
   @override
   String get phoneControlReady => 'Ready to control your phone';
@@ -14197,6 +14197,16 @@ class L10nEn extends L10n {
 
   @override
   String get phoneControlAccessibilityHint => 'Needed to read the screen and tap';
+
+  @override
+  String get phoneControlRootReady => 'Reading the screen with root, no accessibility';
+
+  @override
+  String get phoneControlRootHint =>
+      'With su it just works: reads the screen and taps. One screen at a time, no scrolling.';
+
+  @override
+  String get phoneControlRootName => 'Root';
 
   @override
   String get phoneControlGoSettings => 'Open settings';

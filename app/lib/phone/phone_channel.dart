@@ -592,6 +592,7 @@ class PhoneStatus {
     this.enabled = false,
     this.bridgeListening = false,
     this.a11y = const PhoneA11yStatus(),
+    this.rootAvailable = false,
     this.a11yKeeper = const A11yKeeperStatus(),
     this.overlay = false,
     this.notifications = false,
@@ -614,6 +615,7 @@ class PhoneStatus {
       enabled = false,
       bridgeListening = false,
       a11y = const PhoneA11yStatus(),
+      rootAvailable = false,
       a11yKeeper = const A11yKeeperStatus(),
       overlay = false,
       notifications = false,
@@ -634,6 +636,7 @@ class PhoneStatus {
     enabled: _flag(m['enabled']),
     bridgeListening: _flag(m['bridgeListening']),
     a11y: PhoneA11yStatus.fromMap(_map(m['a11y'])),
+    rootAvailable: _flag(_map(m['root'])['available']),
     a11yKeeper: A11yKeeperStatus.fromMap(_map(m['a11yKeeper'])),
     overlay: _flag(m['overlay']),
     notifications: _flag(m['notifications']),
@@ -663,6 +666,9 @@ class PhoneStatus {
   final bool enabled;
   final bool bridgeListening;
   final PhoneA11yStatus a11y;
+
+  /// su is there, so the main screen no longer needs the accessibility service.
+  final bool rootAvailable;
   final A11yKeeperStatus a11yKeeper;
   final bool overlay;
 
@@ -693,6 +699,7 @@ class PhoneStatus {
     enabled: enabled ?? this.enabled,
     bridgeListening: bridgeListening,
     a11y: a11y,
+    rootAvailable: rootAvailable,
     a11yKeeper: a11yKeeper,
     overlay: overlay,
     notifications: notifications,

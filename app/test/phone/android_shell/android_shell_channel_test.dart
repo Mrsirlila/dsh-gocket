@@ -36,7 +36,7 @@ void main() {
       {},
       {...shellStatus(), 'v': 2},
       {...shellStatus(), 'v': 1.0},
-      {...shellStatus(), 'backend': 'root'},
+      {...shellStatus(), 'backend': 'sui'},
       {...shellStatus(), 'enabled': 1},
       {...shellStatus(), 'ready': 'yes'},
     ]) {

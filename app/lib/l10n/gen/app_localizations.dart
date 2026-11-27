@@ -25083,7 +25083,7 @@ abstract class L10n {
   /// No description provided for @phoneControlNeedsAccessibility.
   ///
   /// In zh, this message translates to:
-  /// **'还差一步：打开无障碍'**
+  /// **'还差一步：打开无障碍或给 root'**
   String get phoneControlNeedsAccessibility;
 
   /// No description provided for @phoneControlReady.
@@ -25121,6 +25121,24 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'看屏幕和点按都靠它'**
   String get phoneControlAccessibilityHint;
+
+  /// No description provided for @phoneControlRootReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'用 root 读屏，不需要无障碍'**
+  String get phoneControlRootReady;
+
+  /// No description provided for @phoneControlRootHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'有 su 就直接用，能看屏幕、点按；只是一次只读一屏，不翻页'**
+  String get phoneControlRootHint;
+
+  /// No description provided for @phoneControlRootName.
+  ///
+  /// In zh, this message translates to:
+  /// **'Root'**
+  String get phoneControlRootName;
 
   /// No description provided for @phoneControlGoSettings.
   ///

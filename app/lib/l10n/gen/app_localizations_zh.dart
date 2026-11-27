@@ -13445,7 +13445,7 @@ class L10nZh extends L10n {
   String get phoneControlAfterEngineStarts => '引擎启动后生效';
 
   @override
-  String get phoneControlNeedsAccessibility => '还差一步：打开无障碍';
+  String get phoneControlNeedsAccessibility => '还差一步：打开无障碍或给 root';
 
   @override
   String get phoneControlReady => '可以操作手机';
@@ -13464,6 +13464,15 @@ class L10nZh extends L10n {
 
   @override
   String get phoneControlAccessibilityHint => '看屏幕和点按都靠它';
+
+  @override
+  String get phoneControlRootReady => '用 root 读屏，不需要无障碍';
+
+  @override
+  String get phoneControlRootHint => '有 su 就直接用，能看屏幕、点按；只是一次只读一屏，不翻页';
+
+  @override
+  String get phoneControlRootName => 'Root';
 
   @override
   String get phoneControlGoSettings => '去设置';

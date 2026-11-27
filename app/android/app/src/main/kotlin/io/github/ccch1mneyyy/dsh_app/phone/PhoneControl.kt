@@ -75,6 +75,8 @@ class PhoneControl private constructor(private val app: Context) : PhoneEnv, Con
     val tasks = PhoneTasks(clock = SystemClock::elapsedRealtime, idSource = taskIds::incrementAndGet)
     val log = ActionLog()
     val system = SystemActions(app)
+    /** The main screen without the accessibility service: su + uiautomator. */
+    private val rootScreen = io.github.ccch1mneyyy.dsh_app.phone.root.RootScreenDriver(app)
     private val localizedUi = PhoneUiText { key, args ->
         when (key) {
             "phone_log_clipboard_write" -> return@PhoneUiText AppStrings.plural(app, R.plurals.phone_log_clipboard_write, args[0] as Int, *args.toTypedArray())
@@ -836,13 +838,13 @@ class PhoneControl private constructor(private val app: Context) : PhoneEnv, Con
      * whatever is in front (DSH's own settings page included; the own-app rule is for tool calls).
      */
     fun testScreen(): Map<String, Any?> {
-        val driver = PhoneRegistry.mainDriver
-            ?: return mapOf("ok" to false, "reason" to if (a11yEnabledInSettings()) AppStrings.get(app, R.string.phone_a11y_connecting) else AppStrings.get(app, R.string.phone_a11y_off))
+        val driver = PhoneRegistry.mainDriver ?: rootScreen
+        val current: () -> Boolean = { (PhoneRegistry.mainDriver ?: rootScreen) === driver }
         val outcome = sessions.readForSelfCheck(core.worker, 8_000, 15_000) {
-            if (PhoneRegistry.mainDriver !== driver) throw InterruptedException()
+            if (!current()) throw InterruptedException()
             val av = driver.availability()
             val read = if (!av.ok) null to (av.userReason ?: av.reason ?: AppStrings.get(app, R.string.phone_a11y_unavailable)) else driver.observe(detail = false, image = false) to null
-            if (PhoneRegistry.mainDriver !== driver) throw InterruptedException()
+            if (!current()) throw InterruptedException()
             read
         } ?: return mapOf("ok" to false, "reason" to AppStrings.get(app, R.string.phone_busy))
         return when (outcome) {
@@ -932,6 +934,7 @@ class PhoneControl private constructor(private val app: Context) : PhoneEnv, Con
             "enabled" to isEnabled(),
             "bridgeListening" to bridge.listening,
             "a11y" to linkedMapOf("enabled" to a11yEnabledInSettings(), "serviceConnected" to (PhoneRegistry.mainDriver != null)),
+            "root" to linkedMapOf("available" to rootScreen.available()),
             "overlay" to (PhoneRegistry.overlayGate != null),
             "notifications" to nm.areNotificationsEnabled(),
             "confirmationNotifications" to notificationGate.available(),
@@ -1108,7 +1111,9 @@ class PhoneControl private constructor(private val app: Context) : PhoneEnv, Con
             val until = SystemClock.elapsedRealtime() + KEEPER_WAIT_MS
             while (PhoneRegistry.mainDriver == null && SystemClock.elapsedRealtime() < until) Thread.sleep(100)
         }
-        if (screen != PhoneScreen.BACKGROUND) return PhoneRegistry.mainDriver
+        // No accessibility service: root drives the main screen on its own. Its availability
+        // carries the reason when there is no su at all, which beats "无障碍没开" for a root user.
+        if (screen != PhoneScreen.BACKGROUND) return PhoneRegistry.mainDriver ?: rootScreen
         return runCatching {
             background.driverForTask(owner, { task.isCurrent(owner) }) { commit ->
                 task.runIfCurrent(owner, commit)
