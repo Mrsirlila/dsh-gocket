@@ -221,11 +221,16 @@ jobs:
 
       # build-apk.sh compiles libtawcroot.so for the tawcroot launch method and
       # fails a release build without it; the runner image does not ship this NDK.
+      # runtime/tawcroot/build.py prefers ANDROID_NDK_HOME over the SDK's ndk/ dir,
+      # and the image presets that variable to its own NDK, so pin it here.
       - name: Install the NDK that tawcroot pins
         run: |
           sdkmanager=$(command -v sdkmanager || echo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager")
           yes 2>/dev/null | "$sdkmanager" --install "ndk;28.2.13676358" > /dev/null
-          ls "$ANDROID_HOME/ndk"
+          ndk="$ANDROID_HOME/ndk/28.2.13676358"
+          [[ -d $ndk ]] || ndk=$(ls -d "$ANDROID_HOME"/ndk/* | head -1)
+          grep Pkg.Revision "$ndk/source.properties"
+          echo "ANDROID_NDK_HOME=$ndk" >> "$GITHUB_ENV"
 
       - name: Build the APK
         # No upstream update mirror / feed: their manifests describe ccch1mneyyy's
