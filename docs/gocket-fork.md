@@ -159,7 +159,7 @@ call ... flutter.bat build apk --release --flavor arm64 --target-platform androi
 ```
 # 1) 构建（build-gocket-<ver>.bat，见上一节）
 # 2) 发版：生成三件套 + 打 tag + 建 Release + 上传（幂等，可重跑）
-powershell -ExecutionPolicy Bypass -File D:\android-build\release-gocket.ps1 -Version 1.4.6 -NotesFile D:\android-build\notes-146.md
+pwsh -NoProfile -File D:\android-build\release-gocket.ps1 -Version 1.4.6 -NotesFile D:\android-build\notes-146.md
 ```
 
 `release-gocket.ps1` 会先核对 `app/pubspec.yaml` 的版本号，对不上直接退出；重复跑同一个版本会覆盖旧资产。它用 `git credential` 里的 PAT，需要 `py` 与 `curl` 在 PATH。
@@ -171,3 +171,4 @@ powershell -ExecutionPolicy Bypass -File D:\android-build\release-gocket.ps1 -Ve
 - `test/remote/remote_bootstrap_test.dart`：需要 `sh`，Windows 上必挂
 - `test/remote/relay_credit_test.dart`：合并卡布局与上游断言不一致（1.3.1 起就有）
 - `test/phone/phone_self_check_test.dart` 的一条：Windows 路径分隔符 `/` 与 `\` 的差异
+
